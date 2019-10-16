@@ -1,12 +1,11 @@
 Player has to mash if caught by villain
 Player has life (or stamina/speed?)
 Room obstacles
-Windows
+Windows (doors w/ different sprite)
 Adjoining rooms
+Fade out
 
 In-progress:
-    Horizontal doors
-    Align leftmost doors one pixel to the left
 
 Bugs:
     No duplicate doors overlapping

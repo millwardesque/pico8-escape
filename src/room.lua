@@ -47,13 +47,16 @@ local room = {
             return { door_origin, door_origin + v2.mk(8 - 1, 8 - 1) }
         end
 
-        r.check_doors = function(self, p1)
+        r.get_room_rect = function(self, door)
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(r.x_dim * 8, r.y_dim * 8) }
+        end
+
+        r.is_at_door = function(self, p1)
             p1_rect = p1.get_rect(p1)
 
-            for door in all(self.doors) do
-                door_rect = self.get_door_rect(self, door)
-
-                if utils.square_col(door_rect[1], door_rect[2], p1_rect[1], p1_rect[2]) then
+            for door in all(doors) do
+                local door_rect = self.get_door_rect(self, door)
+                if utils.rect_col(door_rect[1], door_rect[2], p1_rect[1], p1_rect[2]) then
                     return door
                 end
             end

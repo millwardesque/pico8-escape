@@ -404,13 +404,16 @@ local room = {
             return { door_origin, door_origin + v2.mk(8 - 1, 8 - 1) }
         end
 
-        r.check_doors = function(self, p1)
+        r.get_room_rect = function(self, door)
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(r.x_dim * 8, r.y_dim * 8) }
+        end
+
+        r.is_at_door = function(self, p1)
             p1_rect = p1.get_rect(p1)
 
-            for door in all(self.doors) do
-                door_rect = self.get_door_rect(self, door)
-
-                if utils.square_col(door_rect[1], door_rect[2], p1_rect[1], p1_rect[2]) then
+            for door in all(doors) do
+                local door_rect = self.get_door_rect(self, door)
+                if utils.rect_col(door_rect[1], door_rect[2], p1_rect[1], p1_rect[2]) then
                     return door
                 end
             end
@@ -456,7 +459,7 @@ local utils = {
                 p.y <= br.y)
     end,
 
-    square_col = function(p0tl, p0br, p1tl, p1br)
+    rect_col = function(p0tl, p0br, p1tl, p1br)
         local p0_in_p1 = (
             utils.pt_in_rect(p0tl, p1tl, p1br) or
             utils.pt_in_rect(v2.mk(p0br.x, p0tl.y), p1tl, p1br) or
@@ -471,6 +474,8 @@ local utils = {
 
         return p0_in_p1 or p1_in_p0
     end
+
+
 }
 
 return utils
@@ -667,7 +672,27 @@ function _update()
             end
         end
 
-        if level_room.check_doors(level_room, p1) then
+        -- Adjust player position to be in room
+        local room_rect = level_room.get_room_rect(level_room)
+        local p1_rect = p1.get_rect(p1)
+        if p1_rect[1].x < room_rect[1].x then
+            p1.x = room_rect[1].x
+        end
+
+        if p1_rect[2].x >= room_rect[2].x then
+            p1.x = room_rect[2].x - 8
+        end
+
+        if p1_rect[1].y < room_rect[1].y then
+            p1.y = room_rect[1].y
+        end
+
+        if p1_rect[2].y >= room_rect[2].y then
+            p1.y = room_rect[2].y - 8
+        end
+
+        -- Check if the player is at a door
+        if level_room.is_at_door(level_room, p1) then
             state = "complete"
         end
     elseif state == "complete" then

@@ -150,7 +150,27 @@ function _update()
             end
         end
 
-        if level_room.check_doors(level_room, p1) then
+        -- Adjust player position to be in room
+        local room_rect = level_room.get_room_rect(level_room)
+        local p1_rect = p1.get_rect(p1)
+        if p1_rect[1].x < room_rect[1].x then
+            p1.x = room_rect[1].x
+        end
+
+        if p1_rect[2].x >= room_rect[2].x then
+            p1.x = room_rect[2].x - 8
+        end
+
+        if p1_rect[1].y < room_rect[1].y then
+            p1.y = room_rect[1].y
+        end
+
+        if p1_rect[2].y >= room_rect[2].y then
+            p1.y = room_rect[2].y - 8
+        end
+
+        -- Check if the player is at a door
+        if level_room.is_at_door(level_room, p1) then
             state = "complete"
         end
     elseif state == "complete" then

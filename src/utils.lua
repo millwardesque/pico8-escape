@@ -29,7 +29,7 @@ local utils = {
                 p.y <= br.y)
     end,
 
-    square_col = function(p0tl, p0br, p1tl, p1br)
+    rect_col = function(p0tl, p0br, p1tl, p1br)
         local p0_in_p1 = (
             utils.pt_in_rect(p0tl, p1tl, p1br) or
             utils.pt_in_rect(v2.mk(p0br.x, p0tl.y), p1tl, p1br) or
@@ -44,6 +44,8 @@ local utils = {
 
         return p0_in_p1 or p1_in_p0
     end
+
+
 }
 
 return utils
