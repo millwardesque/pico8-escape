@@ -1,6 +1,4 @@
 Player/Villain interaction:
-    Player has to mash if caught by villain
-    Player can run (temporarily drains stamina) unless caught
     Health persists across levels
 
 Rooms:

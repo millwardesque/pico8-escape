@@ -502,6 +502,9 @@ local villain = {
         v.sprite = sprite
         v.target = target
         v.speed = speed
+        v.state = "pursuit"
+        v.stun_length = 0
+        v.stun_elapsed = 0
 
         v.vel = v2.zero()
         v.dir_to_target = v2.zero()
@@ -509,11 +512,39 @@ local villain = {
         renderer.attach(v, sprite)
         v.renderable.draw_order = 10
 
-        v.update = function(self)
+        v.dislodge = function(self, p1, push_amount, stun_length)
+            -- Push away from target back
+            local push_vec = self.dir_to_target(self) * -1 * push_amount
+            self.x += push_vec.x
+            self.y += push_vec.y
+
+            self.state = "stunned"
+            self.stun_length = stun_length
+        end
+
+        v.dir_to_target = function(self)
             local d = self.target.v2_pos(self.target) - self.v2_pos(self)
             local dist = v2.mag(d)
-            local dir_to_target = v2.norm(d)
-            self.vel =  dir_to_target * self.speed
+            return v2.norm(d)
+        end
+
+        v.is_stunned = function(self)
+            return self.state == "stunned"
+        end
+
+        v.update = function(self)
+            if self.state == "pursuit" then
+                self.vel =  self.dir_to_target(self) * self.speed
+            elseif self.is_stunned(self) then
+                self.stun_elapsed += 1
+                self.vel = v2.zero()
+
+                if self.stun_elapsed == self.stun_length then
+                    self.stun_elapsed = 0
+                    self.stun_length = 0
+                    self.state = "pursuit"
+                end
+            end
 
             self.x += self.vel.x
             self.y += self.vel.y
@@ -570,11 +601,16 @@ ui = require('ui')
 
 cam = nil
 p1 = nil
-p1_speed = 2
+p1_walk_speed = 2
+p1_caught_speed = p1_walk_speed / 4
+p1_run_speed = p1_walk_speed * 1.5
 p1_caught_time = 0
-
 injury_time = 20
 injury_amount = 5
+push_amount = 10
+stun_length = 45
+escape_amount = 0
+escape_threshold = 5
 
 v1 = nil
 v1_speed = 1.5
@@ -676,11 +712,25 @@ function bool_str(b)
     end
 end
 
+function is_p1_caught()
+    return p1_caught_time > 0
+end
+
 function _update()
     if state == "test" then
         log.syslog("t1: "..bool_str(utils.pt_in_rect(v2.mk(44, 72), v2.mk(40, 68), v2.mk(48, 76))))
     elseif state == "ingame" then
         p1.vel = v2.zero()
+
+        local p1_speed = 0
+        if is_p1_caught() then
+            p1_speed = p1_caught_speed
+        elseif btn(4) then
+            p1_speed = p1_run_speed
+            p1.set_stamina(p1, p1.stamina - 1)
+        else
+            p1_speed = p1_walk_speed
+        end
 
         if btn(0) then
             p1.vel.x -= p1_speed
@@ -694,6 +744,19 @@ function _update()
         end
         if btn(3) then
             p1.vel.y += p1_speed
+        end
+
+        if is_p1_caught() then
+            if btnp(4) then
+                escape_amount += 1
+
+                if escape_amount >= escape_threshold then
+                    v1.dislodge(v1, p1, push_amount, stun_length)
+                    escape_amount = 0
+                end
+            else
+                escape_amount -= 0.01
+            end
         end
 
         if btnp(5) then
@@ -718,7 +781,7 @@ function _update()
 
         p1_rect = p1.get_rect(p1)
         v1_rect = v1.get_rect(v1)
-        if utils.rect_col(p1_rect[1], p1_rect[2], v1_rect[1], v1_rect[2]) then
+        if not v1.is_stunned(v1) and utils.rect_col(p1_rect[1], p1_rect[2], v1_rect[1], v1_rect[2]) then
             p1.set_stamina(p1, p1.stamina - 1)
 
             p1_caught_time += 1
