@@ -1,9 +1,13 @@
-Player has to mash if caught by villain
-Player has life (or stamina/speed?)
-Room obstacles
-Windows (doors w/ different sprite)
-Adjoining rooms
-Fade out
+Player/Villain interaction:
+    Player has to mash if caught by villain
+    Player can run (temporarily drains stamina) unless caught
+    Health persists across levels
+
+Rooms:
+    Room obstacles
+    Windows (doors w/ different sprite)
+    Adjoining rooms (?)
+    Fade out
 
 In-progress:
 

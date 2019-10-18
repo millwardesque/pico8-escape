@@ -25,6 +25,10 @@ local villain = {
             self.y += self.vel.y
         end
 
+        v.get_rect = function(self)
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(8 - 1, 8 - 1) }
+        end
+
         return v
     end
 }

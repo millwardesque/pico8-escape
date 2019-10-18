@@ -323,6 +323,8 @@ local player = {
         local p = game_obj.mk('player', 'player', x, y)
         p.sprite = sprite
         p.vel = v2.zero()
+        p.max_stamina = 100
+        p.stamina = 100
 
         renderer.attach(p, sprite)
         p.renderable.draw_order = 10
@@ -334,6 +336,15 @@ local player = {
         p.update = function(self)
             self.x += self.vel.x
             self.y += self.vel.y
+        end
+
+        p.injure = function(self, damage)
+            self.max_stamina = max(0, self.max_stamina - damage)
+            self.set_stamina(self, self.stamina)
+        end
+
+        p.set_stamina = function(self, new_stamina)
+            self.stamina = min(self.max_stamina, max(0, new_stamina))
         end
 
         p.renderable.render = function(renderable, x, y)
@@ -508,11 +519,35 @@ local villain = {
             self.y += self.vel.y
         end
 
+        v.get_rect = function(self)
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(8 - 1, 8 - 1) }
+        end
+
         return v
     end
 }
 
 return villain
+end
+package._c["ui"]=function()
+local ui = {
+    render_stamina = function(current, max)
+        container_margin = 4
+        container_width = 128 - (container_margin * 2)
+        px_per_stamina = container_width / 100
+        h = 5
+        x0 = container_margin
+        y = 127 - h - container_margin
+        x1 = container_margin + (max * px_per_stamina)
+        pct = (x1 - 1 - x0 - 1) * (current / max)
+        current_x0 = x0 + 1
+        current_x1 = x0 + 1 + pct
+
+        rectfill(x0, y, x1, y + h, 14)
+        rectfill(current_x0, y + 1, current_x1, y + h - 1, 8)
+    end
+}
+return ui
 end
 function require(p)
 local l=package.loaded
@@ -531,10 +566,15 @@ player = require('player')
 room = require('room')
 utils = require('utils')
 villain = require('villain')
+ui = require('ui')
 
 cam = nil
 p1 = nil
 p1_speed = 2
+p1_caught_time = 0
+
+injury_time = 20
+injury_amount = 5
 
 v1 = nil
 v1_speed = 1.5
@@ -656,7 +696,7 @@ function _update()
             p1.vel.y += p1_speed
         end
 
-        if btnp(4) then
+        if btnp(5) then
             restart_level()
         end
 
@@ -672,27 +712,28 @@ function _update()
             end
         end
 
-        -- Adjust player position to be in room
-        local room_rect = level_room.get_room_rect(level_room)
-        local p1_rect = p1.get_rect(p1)
-        if p1_rect[1].x < room_rect[1].x then
-            p1.x = room_rect[1].x
+        -- Adjust actors to be in room
+        restrict_to_room(level_room, p1, 8, 8)
+        restrict_to_room(level_room, v1, 8, 8)
+
+        p1_rect = p1.get_rect(p1)
+        v1_rect = v1.get_rect(v1)
+        if utils.rect_col(p1_rect[1], p1_rect[2], v1_rect[1], v1_rect[2]) then
+            p1.set_stamina(p1, p1.stamina - 1)
+
+            p1_caught_time += 1
+            if p1_caught_time > injury_time then
+                p1_caught_time -= injury_time
+                p1.injure(p1, injury_amount)
+            end
+        else
+            p1_caught_time = 0
+            p1.set_stamina(p1, p1.stamina + 0.5)
         end
 
-        if p1_rect[2].x >= room_rect[2].x then
-            p1.x = room_rect[2].x - 8
-        end
-
-        if p1_rect[1].y < room_rect[1].y then
-            p1.y = room_rect[1].y
-        end
-
-        if p1_rect[2].y >= room_rect[2].y then
-            p1.y = room_rect[2].y - 8
-        end
-
-        -- Check if the player is at a door
-        if level_room.is_at_door(level_room, p1) then
+        if p1.stamina <= 0 then
+            state = "gameover"
+        elseif level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
             state = "complete"
         end
     elseif state == "complete" then
@@ -708,6 +749,27 @@ function _update()
     end
 end
 
+function restrict_to_room(room, actor, actor_size_x, actor_size_y)
+    local room_rect = room.get_room_rect(room)
+    local actor_rect = actor.get_rect(actor)
+
+    if actor_rect[1].x < room_rect[1].x then
+        actor.x = room_rect[1].x
+    end
+
+    if actor_rect[2].x >= room_rect[2].x then
+        actor.x = room_rect[2].x - actor_size_x
+    end
+
+    if actor_rect[1].y < room_rect[1].y then
+        actor.y = room_rect[1].y
+    end
+
+    if actor_rect[2].y >= room_rect[2].y then
+        actor.y = room_rect[2].y - actor_size_y
+    end
+end
+
 function _draw()
     cls(0)
 
@@ -715,6 +777,7 @@ function _draw()
 
     if state == "ingame" then
         log.log("Timer: "..flr(level_timer / stat(8)))
+        ui.render_stamina(p1.stamina, p1.max_stamina)
 
         -- @DEBUG log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
     elseif state == "complete" then
