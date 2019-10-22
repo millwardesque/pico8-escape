@@ -401,12 +401,12 @@ renderer = require('renderer')
 utils = require('utils')
 
 local room = {
-    mk = function(x, y, x_dim, y_dim, tileset, doors)
+    mk = function(x, y, cols, rows, tileset)
         local r = game_obj.mk('room', 'room', x, y)
-        r.x_dim = x_dim
-        r.y_dim = y_dim
+        r.cols = cols
+        r.rows = rows
         r.tileset = tileset
-        r.doors = doors
+        r.doors = {}
 
         renderer.attach(r, tileset)
 
@@ -414,8 +414,8 @@ local room = {
             go = renderable.game_obj
 
             renderable.sprite = go.tileset
-            for col=0, go.x_dim - 1 do
-                for row=0, go.y_dim - 1 do
+            for col=0, go.cols - 1 do
+                for row=0, go.rows - 1 do
                     x_offset = col * 8
                     y_offset = row * 8
 
@@ -446,7 +446,7 @@ local room = {
         end
 
         r.get_room_rect = function(self, door)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(r.x_dim * 8, r.y_dim * 8) }
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(r.cols * 8, r.rows * 8) }
         end
 
         r.is_at_door = function(self, p1)
@@ -463,6 +463,43 @@ local room = {
         end
 
         return r
+    end,
+
+    generate_doors = function(rm, num_doors)
+        -- Generate the doors
+        local doors = {}
+        while #doors < num_doors do
+            if flr(rnd(2)) == 1 then
+                if flr(rnd(2)) == 1 then
+                    x = 0
+                else
+                    x = rm.cols - 1
+                end
+                y = flr(rnd(rm.rows))
+            else
+                if flr(rnd(2)) == 1 then
+                    y = 0
+                else
+                    y = rm.rows - 1
+                end
+                x = flr(rnd(rm.cols))
+            end
+
+            local new_door = v2.mk(x, y)
+            local door_exists = false
+            for d in all(doors) do
+                if new_door.x == d.x and new_door.y == d.y then
+                    door_exists = true
+                    break
+                end
+            end
+
+            if not door_exists then
+                add(doors, new_door)
+            end
+        end
+
+        rm.doors = doors
     end
 }
 
@@ -669,41 +706,6 @@ function next_level()
     local x_offset = 64 - (cols * 8) / 2
     local y_offset = 64 - (rows * 8) / 2
 
-    -- Generate the doors
-    local num_doors = 2
-    local doors = {}
-    while #doors < num_doors do
-        if flr(rnd(2)) == 1 then
-            if flr(rnd(2)) == 1 then
-                x = 0
-            else
-                x = cols - 1
-            end
-            y = flr(rnd(rows))
-        else
-            if flr(rnd(2)) == 1 then
-                y = 0
-            else
-                y = rows - 1
-            end
-            x = flr(rnd(cols))
-        end
-
-        local new_door = v2.mk(x, y)
-        local door_exists = false
-        for d in all(doors) do
-            if new_door.x == d.x and new_door.y == d.y then
-                door_exists = true
-                log.syslog("Duplicate coords at "..d.x..", "..d.y)
-                break
-            end
-        end
-
-        if not door_exists then
-            add(doors, new_door)
-        end
-    end
-
     -- Generate some obstacles
     local num_obstacles = 1
     obstacles = {}
@@ -713,7 +715,11 @@ function next_level()
         add(scene, o)
     end
 
-    level_room = room.mk(x_offset, y_offset, cols, rows, spritesheet_index, doors)
+    level_room = room.mk(x_offset, y_offset, cols, rows, spritesheet_index)
+
+    -- Generate the doors
+    local num_doors = 2
+    room.generate_doors(level_room, num_doors)
     add(scene, level_room)
 
     -- Add the player
@@ -721,7 +727,7 @@ function next_level()
     add(scene, p1)
 
     -- Add the villain
-    v1 = villain.mk(x_offset + doors[1].x * 8, y_offset + doors[1].y * 8, 32, p1, v1_speed)
+    v1 = villain.mk(x_offset + level_room.doors[1].x * 8, y_offset + level_room.doors[1].y * 8, 32, p1, v1_speed)
     -- add(scene, v1)
 
     level_timer = secs_per_level * stat(8) -- secs * target FPS

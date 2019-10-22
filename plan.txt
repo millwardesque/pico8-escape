@@ -1,3 +1,7 @@
+Core functionality:
+    AABB collision response
+    A* pathfinding
+
 Player/Villain interaction:
     Health persists across levels
     Villain enters after player

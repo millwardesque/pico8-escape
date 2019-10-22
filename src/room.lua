@@ -3,12 +3,12 @@ renderer = require('renderer')
 utils = require('utils')
 
 local room = {
-    mk = function(x, y, x_dim, y_dim, tileset, doors)
+    mk = function(x, y, cols, rows, tileset)
         local r = game_obj.mk('room', 'room', x, y)
-        r.x_dim = x_dim
-        r.y_dim = y_dim
+        r.cols = cols
+        r.rows = rows
         r.tileset = tileset
-        r.doors = doors
+        r.doors = {}
 
         renderer.attach(r, tileset)
 
@@ -16,8 +16,8 @@ local room = {
             go = renderable.game_obj
 
             renderable.sprite = go.tileset
-            for col=0, go.x_dim - 1 do
-                for row=0, go.y_dim - 1 do
+            for col=0, go.cols - 1 do
+                for row=0, go.rows - 1 do
                     x_offset = col * 8
                     y_offset = row * 8
 
@@ -48,7 +48,7 @@ local room = {
         end
 
         r.get_room_rect = function(self, door)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(r.x_dim * 8, r.y_dim * 8) }
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(r.cols * 8, r.rows * 8) }
         end
 
         r.is_at_door = function(self, p1)
@@ -65,6 +65,43 @@ local room = {
         end
 
         return r
+    end,
+
+    generate_doors = function(rm, num_doors)
+        -- Generate the doors
+        local doors = {}
+        while #doors < num_doors do
+            if flr(rnd(2)) == 1 then
+                if flr(rnd(2)) == 1 then
+                    x = 0
+                else
+                    x = rm.cols - 1
+                end
+                y = flr(rnd(rm.rows))
+            else
+                if flr(rnd(2)) == 1 then
+                    y = 0
+                else
+                    y = rm.rows - 1
+                end
+                x = flr(rnd(rm.cols))
+            end
+
+            local new_door = v2.mk(x, y)
+            local door_exists = false
+            for d in all(doors) do
+                if new_door.x == d.x and new_door.y == d.y then
+                    door_exists = true
+                    break
+                end
+            end
+
+            if not door_exists then
+                add(doors, new_door)
+            end
+        end
+
+        rm.doors = doors
     end
 }
 
