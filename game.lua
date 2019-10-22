@@ -5,6 +5,7 @@ renderer = require('renderer')
 v2 = require('v2')
 
 level = require('level')
+obstacle = require('obstacle')
 player = require('player')
 room = require('room')
 utils = require('utils')
@@ -35,6 +36,7 @@ active_level_index = nil
 levels = {}
 levels_completed = 0
 secs_per_level = 30
+obstacles = {}
 
 background = {x = 0, y = 0, w = 16, h = 16}
 
@@ -61,8 +63,7 @@ function next_level()
     -- Generate the doors
     local num_doors = 2
     local doors = {}
-    for i=1, num_doors do
-
+    while #doors < num_doors do
         if flr(rnd(2)) == 1 then
             if flr(rnd(2)) == 1 then
                 x = 0
@@ -79,7 +80,28 @@ function next_level()
             x = flr(rnd(cols))
         end
 
-        add(doors, v2.mk(x, y))
+        local new_door = v2.mk(x, y)
+        local door_exists = false
+        for d in all(doors) do
+            if new_door.x == d.x and new_door.y == d.y then
+                door_exists = true
+                log.syslog("Duplicate coords at "..d.x..", "..d.y)
+                break
+            end
+        end
+
+        if not door_exists then
+            add(doors, new_door)
+        end
+    end
+
+    -- Generate some obstacles
+    local num_obstacles = 1
+    obstacles = {}
+    for i=1,num_obstacles do
+        local o = obstacle.mk(84, 64, 8, 8, 128)
+        add(obstacles, o)
+        add(scene, o)
     end
 
     level_room = room.mk(x_offset, y_offset, cols, rows, spritesheet_index, doors)
@@ -91,7 +113,7 @@ function next_level()
 
     -- Add the villain
     v1 = villain.mk(x_offset + doors[1].x * 8, y_offset + doors[1].y * 8, 32, p1, v1_speed)
-    add(scene, v1)
+    -- add(scene, v1)
 
     level_timer = secs_per_level * stat(8) -- secs * target FPS
 
@@ -137,7 +159,7 @@ function _update()
         local p1_speed = 0
         if is_p1_caught() then
             p1_speed = p1_caught_speed
-        elseif btn(4) then
+        elseif btn(5) and p1.stamina > 20 then
             p1_speed = p1_run_speed
             p1.set_stamina(p1, p1.stamina - 1)
         else
@@ -158,6 +180,10 @@ function _update()
             p1.vel.y += p1_speed
         end
 
+        if btnp(5) then
+            restart_level()
+        end
+
         if is_p1_caught() then
             if btnp(4) then
                 escape_amount += 1
@@ -169,10 +195,6 @@ function _update()
             else
                 escape_amount -= 0.01
             end
-        end
-
-        if btnp(5) then
-            restart_level()
         end
 
         level_timer -= 1
@@ -191,6 +213,12 @@ function _update()
         restrict_to_room(level_room, p1, 8, 8)
         restrict_to_room(level_room, v1, 8, 8)
 
+        -- @TODO Collide with obstacles
+        for o in all(obstacles) do
+            collide_with_obstacle(p1, o, 8, 8)
+        end
+
+
         p1_rect = p1.get_rect(p1)
         v1_rect = v1.get_rect(v1)
         if not v1.is_stunned(v1) and utils.rect_col(p1_rect[1], p1_rect[2], v1_rect[1], v1_rect[2]) then
@@ -208,7 +236,7 @@ function _update()
 
         if p1.stamina <= 0 then
             state = "gameover"
-        elseif level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
+        elseif not is_p1_caught() and level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
             state = "complete"
         end
     elseif state == "complete" then
@@ -242,6 +270,30 @@ function restrict_to_room(room, actor, actor_size_x, actor_size_y)
 
     if actor_rect[2].y >= room_rect[2].y then
         actor.y = room_rect[2].y - actor_size_y
+    end
+end
+
+
+function collide_with_obstacle(actor, obst, actor_size_x, actor_size_y)
+    local obst_rect = obst.get_rect(obst)
+    local actor_rect = actor.get_rect(actor)
+
+    if utils.rect_col(actor_rect[1], actor_rect[2], obst_rect[1], obst_rect[2]) then
+        if actor_rect[2].x > obst_rect[1].x then
+            actor.x = obst_rect[1].x - actor_size_x
+        end
+
+        if actor.vel.x < 0 and actor_rect[1].x < obst_rect[2].x then
+            actor.x = obst_rect[2].x + 1
+        end
+
+        if actor.vel.y > 0 and actor_rect[2].y > obst_rect[1].y then
+            actor.y = obst_rect[1].y - actor_size_y
+        end
+
+        if actor.vel.y < 0 and actor_rect[1].y < obst_rect[2].y then
+            actor.y = obst_rect[2].y + 1
+        end
     end
 end
 

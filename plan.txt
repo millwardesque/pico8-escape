@@ -1,13 +1,19 @@
 Player/Villain interaction:
     Health persists across levels
+    Villain enters after player
+    Villain can attack player through walls
+    Villain can attack player through windows
+    Player can jump over obstacles
+    Villain has to walk around obstacles
+    Multiple villain types / behaviours than get randomized per game session
+    Killing blow at zero stamina
 
 Rooms:
     Room obstacles
     Windows (doors w/ different sprite)
-    Adjoining rooms (?)
+    Adjoining rooms / hallways
     Fade out
-
-In-progress:
+    Randomize room dimensions
 
 Bugs:
-    No duplicate doors overlapping
+    Obstacle collision response

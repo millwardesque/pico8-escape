@@ -30,19 +30,10 @@ local utils = {
     end,
 
     rect_col = function(p0tl, p0br, p1tl, p1br)
-        local p0_in_p1 = (
-            utils.pt_in_rect(p0tl, p1tl, p1br) or
-            utils.pt_in_rect(v2.mk(p0br.x, p0tl.y), p1tl, p1br) or
-            utils.pt_in_rect(v2.mk(p0tl.x, p0br.y), p1tl, p1br) or
-            utils.pt_in_rect(p0br, p1tl, p1br))
-
-        local p1_in_p0 = (
-            utils.pt_in_rect(p1tl, p0tl, p0br) or
-            utils.pt_in_rect(v2.mk(p1br.x, p1tl.y), p0tl, p0br) or
-            utils.pt_in_rect(v2.mk(p1tl.x, p1br.y), p0tl, p0br) or
-            utils.pt_in_rect(p1br, p0tl, p0br))
-
-        return p0_in_p1 or p1_in_p0
+        return p0tl.x <= p1br.x and
+               p0br.x >= p1tl.x and
+               p0tl.y <= p1br.y and
+               p0br.y >= p1tl.y
     end
 
 
