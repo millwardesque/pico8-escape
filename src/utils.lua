@@ -34,9 +34,14 @@ local utils = {
                p0br.x >= p1tl.x and
                p0tl.y <= p1br.y and
                p0br.y >= p1tl.y
+    end,
+
+    draw_corners = function(rect)
+        pset(rect[1].x, rect[1].y)
+        pset(rect[2].x, rect[1].y)
+        pset(rect[2].x, rect[2].y)
+        pset(rect[1].x, rect[2].y)
     end
-
-
 }
 
 return utils

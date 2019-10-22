@@ -383,10 +383,7 @@ local player = {
 
             -- Draw collider corners
             local rect = go.get_rect(go)
-            pset(rect[1].x, rect[1].y)
-            pset(rect[2].x, rect[1].y)
-            pset(rect[2].x, rect[2].y)
-            pset(rect[1].x, rect[2].y)
+            utils.draw_corners(rect)
         end
 
         return p
@@ -413,6 +410,7 @@ local room = {
         r.renderable.render = function(renderable, x, y)
             go = renderable.game_obj
 
+            -- Draw floors
             renderable.sprite = go.tileset
             for col=0, go.cols - 1 do
                 for row=0, go.rows - 1 do
@@ -423,6 +421,7 @@ local room = {
                 end
             end
 
+            -- Draw doors
             renderable.sprite = go.tileset + 1
             for door in all(go.doors) do
                 x_offset = door.x * 8
@@ -433,10 +432,7 @@ local room = {
             -- Draw door collider corners
             for door in all(go.doors) do
                 door_rect = go.get_door_rect(go, door)
-                pset(door_rect[1].x, door_rect[1].y)
-                pset(door_rect[2].x, door_rect[1].y)
-                pset(door_rect[2].x, door_rect[2].y)
-                pset(door_rect[1].x, door_rect[2].y)
+                utils.draw_corners(door_rect)
             end
         end
 
@@ -452,7 +448,7 @@ local room = {
         r.is_at_door = function(self, p1)
             p1_rect = p1.get_rect(p1)
 
-            for door in all(doors) do
+            for door in all(self.doors) do
                 local door_rect = self.get_door_rect(self, door)
                 if utils.rect_col(door_rect[1], door_rect[2], p1_rect[1], p1_rect[2]) then
                     return door
@@ -542,9 +538,14 @@ local utils = {
                p0br.x >= p1tl.x and
                p0tl.y <= p1br.y and
                p0br.y >= p1tl.y
+    end,
+
+    draw_corners = function(rect)
+        pset(rect[1].x, rect[1].y)
+        pset(rect[2].x, rect[1].y)
+        pset(rect[2].x, rect[2].y)
+        pset(rect[1].x, rect[2].y)
     end
-
-
 }
 
 return utils
@@ -728,9 +729,9 @@ function next_level()
 
     -- Add the villain
     v1 = villain.mk(x_offset + level_room.doors[1].x * 8, y_offset + level_room.doors[1].y * 8, 32, p1, v1_speed)
-    -- add(scene, v1)
+    add(scene, v1)
 
-    level_timer = secs_per_level * stat(8) -- secs * target FPS
+    level_timer = secs_per_level * stat(8)
 
     state = "ingame"
 end

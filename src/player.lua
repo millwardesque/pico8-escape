@@ -37,10 +37,7 @@ local player = {
 
             -- Draw collider corners
             local rect = go.get_rect(go)
-            pset(rect[1].x, rect[1].y)
-            pset(rect[2].x, rect[1].y)
-            pset(rect[2].x, rect[2].y)
-            pset(rect[1].x, rect[2].y)
+            utils.draw_corners(rect)
         end
 
         return p

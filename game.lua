@@ -82,9 +82,9 @@ function next_level()
 
     -- Add the villain
     v1 = villain.mk(x_offset + level_room.doors[1].x * 8, y_offset + level_room.doors[1].y * 8, 32, p1, v1_speed)
-    -- add(scene, v1)
+    add(scene, v1)
 
-    level_timer = secs_per_level * stat(8) -- secs * target FPS
+    level_timer = secs_per_level * stat(8)
 
     state = "ingame"
 end
