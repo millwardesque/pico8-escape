@@ -351,19 +351,30 @@ v2 = require('v2')
 local player = {
     mk = function(x, y, sprite)
         local p = game_obj.mk('player', 'player', x, y)
+
+        p.w = 8
+        p.h = 8
         p.sprite = sprite
         p.vel = v2.zero()
+        p.last_pos = v2.zero()
         p.max_stamina = 100
         p.stamina = 100
+
 
         renderer.attach(p, sprite)
         p.renderable.draw_order = 10
 
         p.get_rect = function(self)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(8 - 1, 8 - 1) }
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.w - 1, self.h - 1) }
+        end
+
+        p.get_last_rect = function(self)
+            return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
         end
 
         p.update = function(self)
+            self.last_pos = self.v2_pos(self)
+
             self.x += self.vel.x
             self.y += self.vel.y
         end
@@ -381,8 +392,8 @@ local player = {
             local go = renderable.game_obj
             renderable.default_render(renderable, x, y)
 
-            -- Draw collider corners
-            local rect = go.get_rect(go)
+            -- Draw previous frame's rect
+            local rect = go.get_last_rect(go)
             utils.draw_corners(rect)
         end
 
@@ -545,7 +556,15 @@ local utils = {
         pset(rect[2].x, rect[1].y)
         pset(rect[2].x, rect[2].y)
         pset(rect[1].x, rect[2].y)
-    end
+    end,
+
+    bool_str = function(b)
+        if b then
+            return "t"
+        else
+            return "f"
+        end
+    end,
 }
 
 return utils
@@ -558,6 +577,9 @@ v2 = require('v2')
 local villain = {
     mk = function(x, y, sprite, target, speed)
         local v = game_obj.mk('villain', 'villain', x, y)
+
+        v.w = 8
+        v.h = 8
         v.sprite = sprite
         v.target = target
         v.speed = speed
@@ -565,6 +587,7 @@ local villain = {
         v.stun_length = 0
         v.stun_elapsed = 0
 
+        v.last_pos = v2.zero()
         v.vel = v2.zero()
         v.dir_to_target = v2.zero()
 
@@ -592,6 +615,8 @@ local villain = {
         end
 
         v.update = function(self)
+            self.last_pos = self.v2_pos(self)
+
             if self.state == "pursuit" then
                 self.vel =  self.dir_to_target(self) * self.speed
             elseif self.is_stunned(self) then
@@ -610,7 +635,11 @@ local villain = {
         end
 
         v.get_rect = function(self)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(8 - 1, 8 - 1) }
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.w - 1, self.h - 1) }
+        end
+
+        v.get_last_rect = function(self)
+            return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
         end
 
         return v
@@ -832,6 +861,7 @@ function _update()
         -- @TODO Collide with obstacles
         for o in all(obstacles) do
             collide_with_obstacle(p1, o, 8, 8)
+            collide_with_obstacle(v1, o, 8, 8)
         end
 
 
@@ -889,26 +919,25 @@ function restrict_to_room(room, actor, actor_size_x, actor_size_y)
     end
 end
 
-
 function collide_with_obstacle(actor, obst, actor_size_x, actor_size_y)
     local obst_rect = obst.get_rect(obst)
     local actor_rect = actor.get_rect(actor)
 
     if utils.rect_col(actor_rect[1], actor_rect[2], obst_rect[1], obst_rect[2]) then
-        if actor_rect[2].x > obst_rect[1].x then
+        local actor_last_rect = actor.get_last_rect(actor)
+        local is_lhs = actor_last_rect[2].x < obst_rect[1].x
+        local is_rhs = actor_last_rect[1].x > obst_rect[2].x
+        local is_top = actor_last_rect[2].y < obst_rect[1].y
+        local is_bottom = actor_last_rect[1].y > obst_rect[2].y
+
+        if is_lhs and not is_rhs and not is_top and not is_bottom then
             actor.x = obst_rect[1].x - actor_size_x
-        end
-
-        if actor.vel.x < 0 and actor_rect[1].x < obst_rect[2].x then
+        elseif is_rhs and not is_lhs and not is_top and not is_bottom then
             actor.x = obst_rect[2].x + 1
-        end
-
-        if actor.vel.y > 0 and actor_rect[2].y > obst_rect[1].y then
-            actor.y = obst_rect[1].y - actor_size_y
-        end
-
-        if actor.vel.y < 0 and actor_rect[1].y < obst_rect[2].y then
+        elseif is_bottom and not is_top and not is_lhs and not is_rhs then
             actor.y = obst_rect[2].y + 1
+        elseif is_top and not is_bottom and not is_lhs and not is_rhs then
+            actor.y = obst_rect[1].y - actor_size_y
         end
     end
 end

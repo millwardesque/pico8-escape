@@ -1,5 +1,6 @@
 Core functionality:
-    AABB collision response
+    AABB collision response on diagonal case
+        * https://hopefultoad.blogspot.com/2017/09/2d-aabb-collision-detection-and-response.html
     A* pathfinding
 
 Player/Villain interaction:
@@ -20,4 +21,3 @@ Rooms:
     Randomize room dimensions
 
 Bugs:
-    Obstacle collision response

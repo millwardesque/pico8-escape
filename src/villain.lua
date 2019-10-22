@@ -5,6 +5,9 @@ v2 = require('v2')
 local villain = {
     mk = function(x, y, sprite, target, speed)
         local v = game_obj.mk('villain', 'villain', x, y)
+
+        v.w = 8
+        v.h = 8
         v.sprite = sprite
         v.target = target
         v.speed = speed
@@ -12,6 +15,7 @@ local villain = {
         v.stun_length = 0
         v.stun_elapsed = 0
 
+        v.last_pos = v2.zero()
         v.vel = v2.zero()
         v.dir_to_target = v2.zero()
 
@@ -39,6 +43,8 @@ local villain = {
         end
 
         v.update = function(self)
+            self.last_pos = self.v2_pos(self)
+
             if self.state == "pursuit" then
                 self.vel =  self.dir_to_target(self) * self.speed
             elseif self.is_stunned(self) then
@@ -57,7 +63,11 @@ local villain = {
         end
 
         v.get_rect = function(self)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(8 - 1, 8 - 1) }
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.w - 1, self.h - 1) }
+        end
+
+        v.get_last_rect = function(self)
+            return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
         end
 
         return v

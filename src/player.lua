@@ -5,19 +5,30 @@ v2 = require('v2')
 local player = {
     mk = function(x, y, sprite)
         local p = game_obj.mk('player', 'player', x, y)
+
+        p.w = 8
+        p.h = 8
         p.sprite = sprite
         p.vel = v2.zero()
+        p.last_pos = v2.zero()
         p.max_stamina = 100
         p.stamina = 100
+
 
         renderer.attach(p, sprite)
         p.renderable.draw_order = 10
 
         p.get_rect = function(self)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(8 - 1, 8 - 1) }
+            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.w - 1, self.h - 1) }
+        end
+
+        p.get_last_rect = function(self)
+            return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
         end
 
         p.update = function(self)
+            self.last_pos = self.v2_pos(self)
+
             self.x += self.vel.x
             self.y += self.vel.y
         end
@@ -35,8 +46,8 @@ local player = {
             local go = renderable.game_obj
             renderable.default_render(renderable, x, y)
 
-            -- Draw collider corners
-            local rect = go.get_rect(go)
+            -- Draw previous frame's rect
+            local rect = go.get_last_rect(go)
             utils.draw_corners(rect)
         end
 

@@ -41,7 +41,15 @@ local utils = {
         pset(rect[2].x, rect[1].y)
         pset(rect[2].x, rect[2].y)
         pset(rect[1].x, rect[2].y)
-    end
+    end,
+
+    bool_str = function(b)
+        if b then
+            return "t"
+        else
+            return "f"
+        end
+    end,
 }
 
 return utils

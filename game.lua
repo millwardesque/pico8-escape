@@ -185,6 +185,7 @@ function _update()
         -- @TODO Collide with obstacles
         for o in all(obstacles) do
             collide_with_obstacle(p1, o, 8, 8)
+            collide_with_obstacle(v1, o, 8, 8)
         end
 
 
@@ -242,26 +243,25 @@ function restrict_to_room(room, actor, actor_size_x, actor_size_y)
     end
 end
 
-
 function collide_with_obstacle(actor, obst, actor_size_x, actor_size_y)
     local obst_rect = obst.get_rect(obst)
     local actor_rect = actor.get_rect(actor)
 
     if utils.rect_col(actor_rect[1], actor_rect[2], obst_rect[1], obst_rect[2]) then
-        if actor_rect[2].x > obst_rect[1].x then
+        local actor_last_rect = actor.get_last_rect(actor)
+        local is_lhs = actor_last_rect[2].x < obst_rect[1].x
+        local is_rhs = actor_last_rect[1].x > obst_rect[2].x
+        local is_top = actor_last_rect[2].y < obst_rect[1].y
+        local is_bottom = actor_last_rect[1].y > obst_rect[2].y
+
+        if is_lhs and not is_rhs and not is_top and not is_bottom then
             actor.x = obst_rect[1].x - actor_size_x
-        end
-
-        if actor.vel.x < 0 and actor_rect[1].x < obst_rect[2].x then
+        elseif is_rhs and not is_lhs and not is_top and not is_bottom then
             actor.x = obst_rect[2].x + 1
-        end
-
-        if actor.vel.y > 0 and actor_rect[2].y > obst_rect[1].y then
-            actor.y = obst_rect[1].y - actor_size_y
-        end
-
-        if actor.vel.y < 0 and actor_rect[1].y < obst_rect[2].y then
+        elseif is_bottom and not is_top and not is_lhs and not is_rhs then
             actor.y = obst_rect[2].y + 1
+        elseif is_top and not is_bottom and not is_lhs and not is_rhs then
+            actor.y = obst_rect[1].y - actor_size_y
         end
     end
 end
