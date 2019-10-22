@@ -753,14 +753,18 @@ function next_level()
     add(scene, level_room)
 
     -- Add the player
-    p1 = player.mk(64, 64, 1)
+    if p1 == nil then
+        p1 = player.mk(64, 64, 1)
+    end
     add(scene, p1)
 
     -- Add the villain
     v1 = villain.mk(x_offset + level_room.doors[1].x * 8, y_offset + level_room.doors[1].y * 8, 32, p1, v1_speed)
     add(scene, v1)
 
-    level_timer = secs_per_level * stat(8)
+    if level_timer == nil then
+        level_timer = secs_per_level * stat(8)
+    end
 
     state = "ingame"
 end
@@ -773,6 +777,9 @@ end
 function reset_game()
     active_level_index = 0
     levels_completed = 0
+    p1 = nil
+    v1 = nil
+    level_timer = nil
 
     next_level()
 end
