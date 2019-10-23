@@ -86,6 +86,16 @@ function next_level()
     v1 = villain.mk(x_offset + level_room.doors[1].x * 8, y_offset + level_room.doors[1].y * 8, 32, p1, v1_speed)
     add(scene, v1)
 
+    log.syslog("*** PATH ***")
+    path = room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1))
+    if not path == nil then
+        for i in all(path) do
+            log.syslog(v2.str(i))
+        end
+    else
+        log.syslog("No path found")
+    end
+
     if level_timer == nil then
         level_timer = secs_per_level * stat(8)
     end

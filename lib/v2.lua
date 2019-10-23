@@ -26,7 +26,11 @@ local v2 = {
         end
     end,
     str = function(v)
-        return "("..v.x..", "..v.y..")"
+        if v == nil then
+            return "(nil)"
+        else
+            return "("..v.x..", "..v.y..")"
+        end
     end,
     meta = {
         __add = function (a, b)
