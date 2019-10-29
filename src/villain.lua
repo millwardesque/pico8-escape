@@ -10,10 +10,12 @@ local villain = {
         v.h = 8
         v.sprite = sprite
         v.target = target
+        v.path = nil
         v.speed = speed
         v.state = "pursuit"
         v.stun_length = 0
         v.stun_elapsed = 0
+        v.path_index = nil
 
         v.last_pos = v2.zero()
         v.vel = v2.zero()
@@ -21,6 +23,11 @@ local villain = {
 
         renderer.attach(v, sprite)
         v.renderable.draw_order = 10
+
+        v.set_path = function(self, new_path)
+            self.path = new_path
+            self.path_index = 1
+        end
 
         v.dislodge = function(self, p1, push_amount, stun_length)
             -- Push away from target back
@@ -32,9 +39,8 @@ local villain = {
             self.stun_length = stun_length
         end
 
-        v.dir_to_target = function(self)
-            local d = self.target.v2_pos(self.target) - self.v2_pos(self)
-            local dist = v2.mag(d)
+        v.dir_to_point = function(self, point)
+            local d = point - self.v2_pos(self)
             return v2.norm(d)
         end
 
@@ -43,10 +49,18 @@ local villain = {
         end
 
         v.update = function(self)
-            self.last_pos = self.v2_pos(self)
-
             if self.state == "pursuit" then
-                self.vel =  self.dir_to_target(self) * self.speed
+                if self.path != nil then
+                    if self.path_index > #(self.path) then
+                        self.vel = v2.zero()
+                    else
+                        self.vel = self.dir_to_point(self, self.path[self.path_index]) * self.speed
+
+                        if v2.mag(self.path[self.path_index] - self.v2_pos(self)) <= speed then
+                            self.path_index += 1
+                        end
+                    end
+                end
             elseif self.is_stunned(self) then
                 self.stun_elapsed += 1
                 self.vel = v2.zero()
@@ -58,6 +72,7 @@ local villain = {
                 end
             end
 
+            self.last_pos = self.v2_pos(self)
             self.x += self.vel.x
             self.y += self.vel.y
         end

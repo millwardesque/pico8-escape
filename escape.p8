@@ -419,6 +419,7 @@ local room = {
         r.rows = rows
         r.tileset = tileset
         r.doors = {}
+        r.obstacles = {}
 
         renderer.attach(r, tileset)
 
@@ -474,8 +475,28 @@ local room = {
         end
 
         r.is_walkable = function(self, grid_coord)
-            -- @TODO Add obstacles to room
-            return true
+            local walkable = true
+            -- log.syslog("Checking "..v2.str(grid_coord))
+            for o in all(self.obstacles) do
+                local obj_rect = o.get_rect(o)
+                -- @DEBUG log.syslog(o.name..": "..v2.str(obj_rect[1]).." to "..v2.str(obj_rect[2]))
+
+                local obj_grid_coords = {
+                    room.grid_coords(self, obj_rect[1]),
+                    room.grid_coords(self, v2.mk(obj_rect[1].x, obj_rect[2].y)),
+                    room.grid_coords(self, v2.mk(obj_rect[2].x, obj_rect[1].y)),
+                    room.grid_coords(self, obj_rect[2]),
+                }
+
+                for og in all(obj_grid_coords) do
+                    if grid_coord == og then
+                        walkable = false
+                        break
+                    end
+                end
+            end
+
+            return walkable
         end
 
         return r
@@ -487,6 +508,8 @@ local room = {
         local grid_origin = room.grid_coords(rm, origin)
         local grid_dest = room.grid_coords(rm, dest)
         local path_complete = false
+
+        -- log.syslog("Start=>End: "..v2.str(grid_origin).." to "..v2.str(grid_dest))
 
         local path_grid = {}
         for r=1,rm.rows do
@@ -500,11 +523,12 @@ local room = {
         path_grid[grid_origin.y][grid_origin.x] = room.score_cell(grid_origin, nil, grid_dest)
 
         while (not path_complete and #open > 0) do
-            log.syslog("*** ITERATION (o="..#open..", c="..#closed..") ***")
+            -- log.syslog("*** ITERATION (o="..#open..", c="..#closed..") ***")
             local best_score = nil
             local best_cell = nil
             for c in all(open) do
-                if c.x == dest.x and c.y == dest.y then
+                if c.x == grid_dest.x and c.y == grid_dest.y then
+                    -- log.syslog("FOUND ROUTE")
                     path_complete = true
                     add(closed, c)
                     break
@@ -523,6 +547,7 @@ local room = {
             end
 
             if not path_complete then
+                -- log.syslog("Chose "..v2.str(best_cell))
                 del(open, best_cell)
                 add(closed, best_cell)
 
@@ -535,10 +560,20 @@ local room = {
 
         if path_complete then
             local path = {}
+            local reverse_path = {}
+            local node = path_grid[closed[#closed].y][closed[#closed].x]
 
-            for i=#closed,1 do
-                add(path, closed[i])
+            while (node != nil) do
+                add(reverse_path, room.world_pos(rm, node.coords))
+                node = node.parent
             end
+
+            -- Adjust start/end points to the ones provided as args rather than the grid coords
+            add(path, origin)
+            for i = #reverse_path-1,2,-1 do
+                add(path, reverse_path[i])
+            end
+            add(path, dest)
             return path
         else
             return nil
@@ -550,18 +585,17 @@ local room = {
         if my_coords.x < 1 or my_coords.x > rm.cols or
             my_coords.y < 1 or my_coords.y > rm.rows then
                 return
-
-        --         log.syslog("...NOT IN BOUNDS")
+        -- log.syslog("...NOT IN BOUNDS")
         end
 
         if not rm.is_walkable(rm, my_coords) then
-        --     log.syslog("...NOT WALKABLE")
+            -- log.syslog("...NOT WALKABLE")
             return
         end
 
         for c in all(closed) do
             if c.x == my_coords.x and c.y == my_coords.y then
-        --         log.syslog("...IN CLOSED ALREADY")
+                -- log.syslog("...IN CLOSED ALREADY")
                 return
             end
         end
@@ -575,11 +609,11 @@ local room = {
         end
 
         if not is_in_open then
-        --     log.syslog("...NOT IN OPEN")
+            -- log.syslog("...NOT IN OPEN")
             add(open, my_coords)
             path_grid[my_coords.y][my_coords.x] = room.score_cell(my_coords, parent, grid_dest)
         else
-        --     log.syslog("...IN OPEN ALREADY. COMPARING.")
+            -- log.syslog("...IN OPEN ALREADY. COMPARING.")
             local current_score = path_grid[my_coords.y][my_coords.x]
             local current_f = current_score.g + current_score.h
 
@@ -593,7 +627,6 @@ local room = {
     end,
 
     score_cell = function(my_coords, parent, target_coords)
-        log.syslog("SCORING: "..v2.str(my_coords).." vs. "..v2.str(target_coords))
         local g = 0
         if parent then
             g = parent.g + 1
@@ -607,6 +640,8 @@ local room = {
             g = g,
             h = h
         }
+
+        -- log.syslog("SCORING: "..v2.str(my_coords)..": "..(g + h))
         return cell
     end,
 
@@ -616,9 +651,13 @@ local room = {
         local grid_x = flr(lcl.x / 8) + 1
         local grid_y = flr(lcl.y / 8) + 1
 
-        log.syslog("GC: "..v2.str(world_pos).." in "..v2.str(rm.v2_pos(rm)).." = LCL "..v2.str(lcl).." = GC "..v2.str(v2.mk(grid_x, grid_y)))
+        -- log.syslog("GC: "..v2.str(world_pos).." in "..v2.str(rm.v2_pos(rm)).." = LCL "..v2.str(lcl).." = GC "..v2.str(v2.mk(grid_x, grid_y)))
 
         return v2.mk(grid_x, grid_y)
+    end,
+
+    world_pos = function(rm, grid_coords)
+        return rm.v2_pos(rm) + v2.mk((grid_coords.x - 1) * 8, (grid_coords.y - 1) * 8)
     end,
 
     generate_doors = function(rm, num_doors)
@@ -731,10 +770,12 @@ local villain = {
         v.h = 8
         v.sprite = sprite
         v.target = target
+        v.path = nil
         v.speed = speed
         v.state = "pursuit"
         v.stun_length = 0
         v.stun_elapsed = 0
+        v.path_index = nil
 
         v.last_pos = v2.zero()
         v.vel = v2.zero()
@@ -742,6 +783,11 @@ local villain = {
 
         renderer.attach(v, sprite)
         v.renderable.draw_order = 10
+
+        v.set_path = function(self, new_path)
+            self.path = new_path
+            self.path_index = 1
+        end
 
         v.dislodge = function(self, p1, push_amount, stun_length)
             -- Push away from target back
@@ -753,9 +799,8 @@ local villain = {
             self.stun_length = stun_length
         end
 
-        v.dir_to_target = function(self)
-            local d = self.target.v2_pos(self.target) - self.v2_pos(self)
-            local dist = v2.mag(d)
+        v.dir_to_point = function(self, point)
+            local d = point - self.v2_pos(self)
             return v2.norm(d)
         end
 
@@ -764,10 +809,18 @@ local villain = {
         end
 
         v.update = function(self)
-            self.last_pos = self.v2_pos(self)
-
             if self.state == "pursuit" then
-                self.vel =  self.dir_to_target(self) * self.speed
+                if self.path != nil then
+                    if self.path_index > #(self.path) then
+                        self.vel = v2.zero()
+                    else
+                        self.vel = self.dir_to_point(self, self.path[self.path_index]) * self.speed
+
+                        if v2.mag(self.path[self.path_index] - self.v2_pos(self)) <= speed then
+                            self.path_index += 1
+                        end
+                    end
+                end
             elseif self.is_stunned(self) then
                 self.stun_elapsed += 1
                 self.vel = v2.zero()
@@ -779,6 +832,7 @@ local villain = {
                 end
             end
 
+            self.last_pos = self.v2_pos(self)
             self.x += self.vel.x
             self.y += self.vel.y
         end
@@ -880,7 +934,7 @@ function next_level()
 
     -- Generate the room
     local cols = 12
-    local rows = 8
+    local rows = 6
     local spritesheet_index = 64
     local x_offset = 64 - (cols * 8) / 2
     local y_offset = 64 - (rows * 8) / 2
@@ -895,6 +949,7 @@ function next_level()
     end
 
     level_room = room.mk(x_offset, y_offset, cols, rows, spritesheet_index)
+    level_room.obstacles = obstacles
 
     -- Generate the doors
     local num_doors = 2
@@ -911,21 +966,20 @@ function next_level()
     v1 = villain.mk(x_offset + level_room.doors[1].x * 8, y_offset + level_room.doors[1].y * 8, 32, p1, v1_speed)
     add(scene, v1)
 
-    log.syslog("*** PATH ***")
-    path = room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1))
-    if not path == nil then
-        for i in all(path) do
-            log.syslog(v2.str(i))
-        end
-    else
-        log.syslog("No path found")
-    end
+    v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
 
     if level_timer == nil then
         level_timer = secs_per_level * stat(8)
     end
 
     state = "ingame"
+
+    -- log.syslog("Starting!")
+    -- local testpath = room.find_path(level_room, v2.mk(56, 64), v2.mk(96, 64))
+    -- for p in all(testpath) do
+    --     log.syslog(v2.str(p))
+    -- end
+    -- log.syslog("Done!")
 end
 
 function restart_level()
@@ -963,7 +1017,7 @@ end
 
 function _update()
     if state == "test" then
-        log.syslog("t1: "..bool_str(utils.pt_in_rect(v2.mk(44, 72), v2.mk(40, 68), v2.mk(48, 76))))
+        test = 0
     elseif state == "ingame" then
         p1.vel = v2.zero()
 
@@ -1046,6 +1100,11 @@ function _update()
             p1.set_stamina(p1, p1.stamina + 0.5)
         end
 
+        -- @TODO This is out of place, but easiest for now
+        if level_timer % flr(stat(8) / 4) == 0 then
+            v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
+        end
+
         if p1.stamina <= 0 then
             state = "gameover"
         elseif not is_p1_caught() and level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
@@ -1117,7 +1176,7 @@ function _draw()
         log.log("Timer: "..flr(level_timer / stat(8)))
         ui.render_stamina(p1.stamina, p1.max_stamina)
 
-        -- @DEBUG log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
+        log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
     elseif state == "complete" then
         color(7)
         log.log("level complete!")

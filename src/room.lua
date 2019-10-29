@@ -9,6 +9,7 @@ local room = {
         r.rows = rows
         r.tileset = tileset
         r.doors = {}
+        r.obstacles = {}
 
         renderer.attach(r, tileset)
 
@@ -64,8 +65,28 @@ local room = {
         end
 
         r.is_walkable = function(self, grid_coord)
-            -- @TODO Add obstacles to room
-            return true
+            local walkable = true
+            -- log.syslog("Checking "..v2.str(grid_coord))
+            for o in all(self.obstacles) do
+                local obj_rect = o.get_rect(o)
+                -- @DEBUG log.syslog(o.name..": "..v2.str(obj_rect[1]).." to "..v2.str(obj_rect[2]))
+
+                local obj_grid_coords = {
+                    room.grid_coords(self, obj_rect[1]),
+                    room.grid_coords(self, v2.mk(obj_rect[1].x, obj_rect[2].y)),
+                    room.grid_coords(self, v2.mk(obj_rect[2].x, obj_rect[1].y)),
+                    room.grid_coords(self, obj_rect[2]),
+                }
+
+                for og in all(obj_grid_coords) do
+                    if grid_coord == og then
+                        walkable = false
+                        break
+                    end
+                end
+            end
+
+            return walkable
         end
 
         return r
@@ -77,6 +98,8 @@ local room = {
         local grid_origin = room.grid_coords(rm, origin)
         local grid_dest = room.grid_coords(rm, dest)
         local path_complete = false
+
+        -- log.syslog("Start=>End: "..v2.str(grid_origin).." to "..v2.str(grid_dest))
 
         local path_grid = {}
         for r=1,rm.rows do
@@ -90,11 +113,12 @@ local room = {
         path_grid[grid_origin.y][grid_origin.x] = room.score_cell(grid_origin, nil, grid_dest)
 
         while (not path_complete and #open > 0) do
-            log.syslog("*** ITERATION (o="..#open..", c="..#closed..") ***")
+            -- log.syslog("*** ITERATION (o="..#open..", c="..#closed..") ***")
             local best_score = nil
             local best_cell = nil
             for c in all(open) do
-                if c.x == dest.x and c.y == dest.y then
+                if c.x == grid_dest.x and c.y == grid_dest.y then
+                    -- log.syslog("FOUND ROUTE")
                     path_complete = true
                     add(closed, c)
                     break
@@ -113,6 +137,7 @@ local room = {
             end
 
             if not path_complete then
+                -- log.syslog("Chose "..v2.str(best_cell))
                 del(open, best_cell)
                 add(closed, best_cell)
 
@@ -125,10 +150,20 @@ local room = {
 
         if path_complete then
             local path = {}
+            local reverse_path = {}
+            local node = path_grid[closed[#closed].y][closed[#closed].x]
 
-            for i=#closed,1 do
-                add(path, closed[i])
+            while (node != nil) do
+                add(reverse_path, room.world_pos(rm, node.coords))
+                node = node.parent
             end
+
+            -- Adjust start/end points to the ones provided as args rather than the grid coords
+            add(path, origin)
+            for i = #reverse_path-1,2,-1 do
+                add(path, reverse_path[i])
+            end
+            add(path, dest)
             return path
         else
             return nil
@@ -140,18 +175,17 @@ local room = {
         if my_coords.x < 1 or my_coords.x > rm.cols or
             my_coords.y < 1 or my_coords.y > rm.rows then
                 return
-
-        --         log.syslog("...NOT IN BOUNDS")
+        -- log.syslog("...NOT IN BOUNDS")
         end
 
         if not rm.is_walkable(rm, my_coords) then
-        --     log.syslog("...NOT WALKABLE")
+            -- log.syslog("...NOT WALKABLE")
             return
         end
 
         for c in all(closed) do
             if c.x == my_coords.x and c.y == my_coords.y then
-        --         log.syslog("...IN CLOSED ALREADY")
+                -- log.syslog("...IN CLOSED ALREADY")
                 return
             end
         end
@@ -165,11 +199,11 @@ local room = {
         end
 
         if not is_in_open then
-        --     log.syslog("...NOT IN OPEN")
+            -- log.syslog("...NOT IN OPEN")
             add(open, my_coords)
             path_grid[my_coords.y][my_coords.x] = room.score_cell(my_coords, parent, grid_dest)
         else
-        --     log.syslog("...IN OPEN ALREADY. COMPARING.")
+            -- log.syslog("...IN OPEN ALREADY. COMPARING.")
             local current_score = path_grid[my_coords.y][my_coords.x]
             local current_f = current_score.g + current_score.h
 
@@ -183,7 +217,6 @@ local room = {
     end,
 
     score_cell = function(my_coords, parent, target_coords)
-        log.syslog("SCORING: "..v2.str(my_coords).." vs. "..v2.str(target_coords))
         local g = 0
         if parent then
             g = parent.g + 1
@@ -197,6 +230,8 @@ local room = {
             g = g,
             h = h
         }
+
+        -- log.syslog("SCORING: "..v2.str(my_coords)..": "..(g + h))
         return cell
     end,
 
@@ -206,9 +241,13 @@ local room = {
         local grid_x = flr(lcl.x / 8) + 1
         local grid_y = flr(lcl.y / 8) + 1
 
-        log.syslog("GC: "..v2.str(world_pos).." in "..v2.str(rm.v2_pos(rm)).." = LCL "..v2.str(lcl).." = GC "..v2.str(v2.mk(grid_x, grid_y)))
+        -- log.syslog("GC: "..v2.str(world_pos).." in "..v2.str(rm.v2_pos(rm)).." = LCL "..v2.str(lcl).." = GC "..v2.str(v2.mk(grid_x, grid_y)))
 
         return v2.mk(grid_x, grid_y)
+    end,
+
+    world_pos = function(rm, grid_coords)
+        return rm.v2_pos(rm) + v2.mk((grid_coords.x - 1) * 8, (grid_coords.y - 1) * 8)
     end,
 
     generate_doors = function(rm, num_doors)

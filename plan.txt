@@ -1,11 +1,11 @@
 Core functionality:
-    A* pathfinding
     AABB collision response on diagonal case
         * https://hopefultoad.blogspot.com/2017/09/2d-aabb-collision-detection-and-response.html
 
 
 Player/Villain interaction:
     Villain has to walk around obstacles
+        * Villain walks diagonally to furthest point in path w/o an obstacle in the way
     Villain can attack player through walls
     Villain can attack player through windows
     Player can push obstacles in front of villain
@@ -26,3 +26,5 @@ Visual:
     Killing blow at zero stamina
 
 Bugs:
+    Character moves past point of intersection sometimes
+    A* pathfinding provides suboptimal route

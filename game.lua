@@ -55,7 +55,7 @@ function next_level()
 
     -- Generate the room
     local cols = 12
-    local rows = 8
+    local rows = 6
     local spritesheet_index = 64
     local x_offset = 64 - (cols * 8) / 2
     local y_offset = 64 - (rows * 8) / 2
@@ -70,6 +70,7 @@ function next_level()
     end
 
     level_room = room.mk(x_offset, y_offset, cols, rows, spritesheet_index)
+    level_room.obstacles = obstacles
 
     -- Generate the doors
     local num_doors = 2
@@ -86,21 +87,20 @@ function next_level()
     v1 = villain.mk(x_offset + level_room.doors[1].x * 8, y_offset + level_room.doors[1].y * 8, 32, p1, v1_speed)
     add(scene, v1)
 
-    log.syslog("*** PATH ***")
-    path = room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1))
-    if not path == nil then
-        for i in all(path) do
-            log.syslog(v2.str(i))
-        end
-    else
-        log.syslog("No path found")
-    end
+    v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
 
     if level_timer == nil then
         level_timer = secs_per_level * stat(8)
     end
 
     state = "ingame"
+
+    -- log.syslog("Starting!")
+    -- local testpath = room.find_path(level_room, v2.mk(56, 64), v2.mk(96, 64))
+    -- for p in all(testpath) do
+    --     log.syslog(v2.str(p))
+    -- end
+    -- log.syslog("Done!")
 end
 
 function restart_level()
@@ -138,7 +138,7 @@ end
 
 function _update()
     if state == "test" then
-        log.syslog("t1: "..bool_str(utils.pt_in_rect(v2.mk(44, 72), v2.mk(40, 68), v2.mk(48, 76))))
+        test = 0
     elseif state == "ingame" then
         p1.vel = v2.zero()
 
@@ -221,6 +221,11 @@ function _update()
             p1.set_stamina(p1, p1.stamina + 0.5)
         end
 
+        -- @TODO This is out of place, but easiest for now
+        if level_timer % flr(stat(8) / 4) == 0 then
+            v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
+        end
+
         if p1.stamina <= 0 then
             state = "gameover"
         elseif not is_p1_caught() and level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
@@ -292,7 +297,7 @@ function _draw()
         log.log("Timer: "..flr(level_timer / stat(8)))
         ui.render_stamina(p1.stamina, p1.max_stamina)
 
-        -- @DEBUG log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
+        log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
     elseif state == "complete" then
         color(7)
         log.log("level complete!")
