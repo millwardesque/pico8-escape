@@ -1110,7 +1110,6 @@ function _update()
         local p1_rect = p1.get_rect(p1)
         local start_cell_rect = room.cell_rect(level_room, p1_start_cell)
         if false == are_doors_active and false == utils.rect_col(p1_rect[1], p1_rect[2], start_cell_rect[1], start_cell_rect[2]) then
-            log.syslog("Doors are now active")
             are_doors_active = true
         end
 
