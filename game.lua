@@ -30,6 +30,8 @@ v1_speed = 1.5
 
 level_timer = nil
 level_room = nil
+are_doors_active = false -- Doors become active once the player moves off the starting door
+p1_start_cell = nil
 
 active_level = nil
 active_level_index = nil
@@ -61,10 +63,15 @@ function next_level()
     local y_offset = 64 - (rows * 8) / 2
 
     -- Generate some obstacles
-    local num_obstacles = 1
+    local num_obstacles = 2
     obstacles = {}
     for i=1,num_obstacles do
-        local o = obstacle.mk(84, 64, 8, 8, 128)
+
+        -- Generate coords inside the room
+        local x = x_offset + (1 + flr(rnd(cols - 1))) * 8
+        local y = y_offset + (1 + flr(rnd(rows - 1))) * 8
+
+        local o = obstacle.mk(x, y, 8, 8, 128)
         add(obstacles, o)
         add(scene, o)
     end
@@ -77,14 +84,20 @@ function next_level()
     room.generate_doors(level_room, num_doors)
     add(scene, level_room)
 
-    -- Add the player
+    -- Add the player, and position on a door
     if p1 == nil then
-        p1 = player.mk(64, 64, 1)
+        p1 = player.mk(0, 0, 1)
     end
+
+    p1_start_cell = level_room.doors[1]
+    local p1_pos = room.world_pos(level_room, p1_start_cell)
+    p1.x = p1_pos.x
+    p1.y = p1_pos.y
     add(scene, p1)
+    are_doors_active = false
 
     -- Add the villain
-    v1 = villain.mk(x_offset + level_room.doors[1].x * 8, y_offset + level_room.doors[1].y * 8, 32, p1, v1_speed)
+    v1 = villain.mk(x_offset + level_room.doors[2].x * 8, y_offset + level_room.doors[2].y * 8, 32, p1, v1_speed)
     add(scene, v1)
 
     v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
@@ -199,12 +212,18 @@ function _update()
         restrict_to_room(level_room, p1, 8, 8)
         restrict_to_room(level_room, v1, 8, 8)
 
-        -- @TODO Collide with obstacles
+        -- Collide with obstacles
         for o in all(obstacles) do
             collide_with_obstacle(p1, o, 8, 8)
             collide_with_obstacle(v1, o, 8, 8)
         end
 
+        -- Check if the player has moved off the starting square
+        local p1_rect = p1.get_rect(p1)
+        local start_cell_rect = room.cell_rect(level_room, p1_start_cell)
+        if false == are_doors_active and false == utils.rect_col(p1_rect[1], p1_rect[2], start_cell_rect[1], start_cell_rect[2]) then
+            are_doors_active = true
+        end
 
         p1_rect = p1.get_rect(p1)
         v1_rect = v1.get_rect(v1)
@@ -226,9 +245,11 @@ function _update()
             v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
         end
 
+        log.log("P1:"..v2.str(p1.v2_pos(p1)).." / "..v2.str(room.grid_coords(level_room, p1.v2_pos(p1))))
+
         if p1.stamina <= 0 then
             state = "gameover"
-        elseif not is_p1_caught() and level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
+        elseif are_doors_active and not is_p1_caught() and level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
             state = "complete"
         end
     elseif state == "complete" then
@@ -297,7 +318,7 @@ function _draw()
         log.log("Timer: "..flr(level_timer / stat(8)))
         ui.render_stamina(p1.stamina, p1.max_stamina)
 
-        log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
+        -- @DEBUG log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
     elseif state == "complete" then
         color(7)
         log.log("level complete!")

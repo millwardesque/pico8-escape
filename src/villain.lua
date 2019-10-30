@@ -31,7 +31,7 @@ local villain = {
 
         v.dislodge = function(self, p1, push_amount, stun_length)
             -- Push away from target back
-            local push_vec = self.dir_to_target(self) * -1 * push_amount
+            local push_vec = self.dir_to_point(self, self.target.v2_pos(self.target)) * -1 * push_amount
             self.x += push_vec.x
             self.y += push_vec.y
 

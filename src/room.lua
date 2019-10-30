@@ -110,7 +110,7 @@ local room = {
         end
 
         add(open, grid_origin)
-        path_grid[grid_origin.y][grid_origin.x] = room.score_cell(grid_origin, nil, grid_dest)
+        path_grid[grid_origin.y + 1][grid_origin.x + 1] = room.score_cell(grid_origin, nil, grid_dest)
 
         while (not path_complete and #open > 0) do
             -- log.syslog("*** ITERATION (o="..#open..", c="..#closed..") ***")
@@ -124,7 +124,7 @@ local room = {
                     break
                 end
 
-                local scored_cell = path_grid[c.y][c.x]
+                local scored_cell = path_grid[c.y + 1][c.x + 1]
                 local score = scored_cell.g + scored_cell.h
 
                 -- log.syslog("I: "..v2.str(c).." S:"..score.." G:"..scored_cell.g.." H:"..scored_cell.h)
@@ -141,17 +141,17 @@ local room = {
                 del(open, best_cell)
                 add(closed, best_cell)
 
-                room.check_cell(rm, path_grid, best_cell + v2.mk(-1, 0), path_grid[best_cell.y][best_cell.x], grid_dest, open, closed)
-                room.check_cell(rm, path_grid, best_cell + v2.mk(1, 0), path_grid[best_cell.y][best_cell.x], grid_dest, open, closed)
-                room.check_cell(rm, path_grid, best_cell + v2.mk(0, -1), path_grid[best_cell.y][best_cell.x], grid_dest, open, closed)
-                room.check_cell(rm, path_grid, best_cell + v2.mk(0, 1), path_grid[best_cell.y][best_cell.x], grid_dest, open, closed)
+                room.check_cell(rm, path_grid, best_cell + v2.mk(-1, 0), path_grid[best_cell.y + 1][best_cell.x + 1], grid_dest, open, closed)
+                room.check_cell(rm, path_grid, best_cell + v2.mk(1, 0), path_grid[best_cell.y + 1][best_cell.x + 1], grid_dest, open, closed)
+                room.check_cell(rm, path_grid, best_cell + v2.mk(0, -1), path_grid[best_cell.y + 1][best_cell.x + 1], grid_dest, open, closed)
+                room.check_cell(rm, path_grid, best_cell + v2.mk(0, 1), path_grid[best_cell.y + 1][best_cell.x + 1], grid_dest, open, closed)
             end
         end
 
         if path_complete then
             local path = {}
             local reverse_path = {}
-            local node = path_grid[closed[#closed].y][closed[#closed].x]
+            local node = path_grid[closed[#closed].y + 1][closed[#closed].x + 1]
 
             while (node != nil) do
                 add(reverse_path, room.world_pos(rm, node.coords))
@@ -172,8 +172,8 @@ local room = {
 
     check_cell = function(rm, path_grid, my_coords, parent, grid_dest, open, closed)
         -- log.syslog("CHECKING: "..v2.str(my_coords).." TO "..v2.str(grid_dest))
-        if my_coords.x < 1 or my_coords.x > rm.cols or
-            my_coords.y < 1 or my_coords.y > rm.rows then
+        if my_coords.x < 0 or my_coords.x >= rm.cols or
+            my_coords.y < 0 or my_coords.y >= rm.rows then
                 return
         -- log.syslog("...NOT IN BOUNDS")
         end
@@ -201,17 +201,17 @@ local room = {
         if not is_in_open then
             -- log.syslog("...NOT IN OPEN")
             add(open, my_coords)
-            path_grid[my_coords.y][my_coords.x] = room.score_cell(my_coords, parent, grid_dest)
+            path_grid[my_coords.y + 1][my_coords.x + 1] = room.score_cell(my_coords, parent, grid_dest)
         else
             -- log.syslog("...IN OPEN ALREADY. COMPARING.")
-            local current_score = path_grid[my_coords.y][my_coords.x]
+            local current_score = path_grid[my_coords.y + 1][my_coords.x + 1]
             local current_f = current_score.g + current_score.h
 
             local new_score = room.score_cell(my_coords, parent, grid_dest)
             local new_f = new_score.g + new_score.h
 
             if new_f <= current_f then
-                path_grid[my_coords.y][my_coords.x] = new_score
+                path_grid[my_coords.y + 1][my_coords.x + 1] = new_score
             end
         end
     end,
@@ -238,8 +238,8 @@ local room = {
     grid_coords = function(rm, world_pos)
         local lcl = world_pos - rm.v2_pos(rm)
 
-        local grid_x = flr(lcl.x / 8) + 1
-        local grid_y = flr(lcl.y / 8) + 1
+        local grid_x = flr(lcl.x / 8)
+        local grid_y = flr(lcl.y / 8)
 
         -- log.syslog("GC: "..v2.str(world_pos).." in "..v2.str(rm.v2_pos(rm)).." = LCL "..v2.str(lcl).." = GC "..v2.str(v2.mk(grid_x, grid_y)))
 
@@ -247,7 +247,16 @@ local room = {
     end,
 
     world_pos = function(rm, grid_coords)
-        return rm.v2_pos(rm) + v2.mk((grid_coords.x - 1) * 8, (grid_coords.y - 1) * 8)
+        return rm.v2_pos(rm) + v2.mk((grid_coords.x) * 8, (grid_coords.y) * 8)
+    end,
+
+    cell_rect = function(rm, coords)
+        local world_coords = room.world_pos(rm, coords)
+        local rect = {
+            world_coords,
+            world_coords + v2.mk(8 - 1, 8 - 1),
+        }
+        return rect
     end,
 
     generate_doors = function(rm, num_doors)
