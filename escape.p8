@@ -336,6 +336,10 @@ local obstacle = {
             return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.width - 1, self.height - 1) }
         end
 
+        o.get_centre = function(self)
+            return v2.mk(self.x + self.width / 2, self.y + self.height / 2)
+        end
+
         o.update = function(self)
             self.x += self.vel.x
             self.y += self.vel.y
@@ -374,6 +378,10 @@ local player = {
 
         p.get_last_rect = function(self)
             return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
+        end
+
+        p.get_centre = function(self)
+            return v2.mk(self.x + self.w / 2, self.y + self.h / 2)
         end
 
         p.update = function(self)
@@ -564,13 +572,12 @@ local room = {
             local node = path_grid[closed[#closed].y + 1][closed[#closed].x + 1]
 
             while (node != nil) do
-                add(reverse_path, room.world_pos(rm, node.coords))
+                add(reverse_path, room.world_pos(rm, node.coords) + v2.mk(4, 4))
                 node = node.parent
             end
 
-            -- Adjust start/end points to the ones provided as args rather than the grid coords
-            add(path, origin)
-            for i = #reverse_path-1,2,-1 do
+            -- Ignore start point
+            for i = #reverse_path - 1,2,-1 do
                 add(path, reverse_path[i])
             end
             add(path, dest)
@@ -793,6 +800,20 @@ local villain = {
         renderer.attach(v, sprite)
         v.renderable.draw_order = 10
 
+        v.renderable.render = function(self, x, y)
+            self.default_render(self, x, y)
+
+            local path = self.game_obj.path
+            for i=1,#path do
+                if i < self.game_obj.path_index then
+                    color(5)
+                else
+                    color(7)
+                end
+                circfill(path[i].x, path[i].y, 0.5)
+            end
+        end
+
         v.set_path = function(self, new_path)
             self.path = new_path
             self.path_index = 1
@@ -809,8 +830,13 @@ local villain = {
         end
 
         v.dir_to_point = function(self, point)
-            local d = point - self.v2_pos(self)
+            local d = point - self.get_centre(self)
             return v2.norm(d)
+        end
+
+        v.dist_to_point = function(self, point)
+            local d = point - self.get_centre(self)
+            return v2.mag(d)
         end
 
         v.is_stunned = function(self)
@@ -819,14 +845,20 @@ local villain = {
 
         v.update = function(self)
             if self.state == "pursuit" then
+                log.log("V: "..self.path_index.."/"..#(self.path).." ("..v2.str(self.path[self.path_index])..")")
                 if self.path != nil then
                     if self.path_index > #(self.path) then
-                        self.vel = v2.zero()
+                        self.vel = self.dir_to_point(self, self.target.v2_pos(self.target)) * self.speed
                     else
-                        self.vel = self.dir_to_point(self, self.path[self.path_index]) * self.speed
-
-                        if v2.mag(self.path[self.path_index] - self.v2_pos(self)) <= speed then
+                        local rect = self.get_rect(self)
+                        if utils.pt_in_rect(self.path[self.path_index], rect[1], rect[2]) then
                             self.path_index += 1
+                        end
+
+                        if self.path_index > #(self.path) then
+                            self.vel = self.dir_to_point(self, self.target.v2_pos(self.target)) * self.speed
+                        else
+                            self.vel = self.dir_to_point(self, self.path[self.path_index]) * self.speed
                         end
                     end
                 end
@@ -852,6 +884,10 @@ local villain = {
 
         v.get_last_rect = function(self)
             return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
+        end
+
+        v.get_centre = function(self)
+            return v2.mk(self.x + self.w / 2, self.y + self.h / 2)
         end
 
         return v
@@ -988,7 +1024,7 @@ function next_level()
     v1 = villain.mk(x_offset + level_room.doors[2].x * 8, y_offset + level_room.doors[2].y * 8, 32, p1, v1_speed)
     add(scene, v1)
 
-    v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
+    v1.set_path(v1, room.find_path(level_room, v1.get_centre(v1), p1.get_centre(p1)))
 
     if level_timer == nil then
         level_timer = secs_per_level * stat(8)
@@ -1130,7 +1166,7 @@ function _update()
 
         -- @TODO This is out of place, but easiest for now
         if level_timer % flr(stat(8) / 4) == 0 then
-            v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
+            v1.set_path(v1, room.find_path(level_room, v1.get_centre(v1), p1.get_centre(p1)))
         end
 
         log.log("P1:"..v2.str(p1.v2_pos(p1)).." / "..v2.str(room.grid_coords(level_room, p1.v2_pos(p1))))

@@ -100,7 +100,7 @@ function next_level()
     v1 = villain.mk(x_offset + level_room.doors[2].x * 8, y_offset + level_room.doors[2].y * 8, 32, p1, v1_speed)
     add(scene, v1)
 
-    v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
+    v1.set_path(v1, room.find_path(level_room, v1.get_centre(v1), p1.get_centre(p1)))
 
     if level_timer == nil then
         level_timer = secs_per_level * stat(8)
@@ -242,7 +242,7 @@ function _update()
 
         -- @TODO This is out of place, but easiest for now
         if level_timer % flr(stat(8) / 4) == 0 then
-            v1.set_path(v1, room.find_path(level_room, v1.v2_pos(v1), p1.v2_pos(p1)))
+            v1.set_path(v1, room.find_path(level_room, v1.get_centre(v1), p1.get_centre(p1)))
         end
 
         log.log("P1:"..v2.str(p1.v2_pos(p1)).." / "..v2.str(room.grid_coords(level_room, p1.v2_pos(p1))))

@@ -26,6 +26,10 @@ local player = {
             return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
         end
 
+        p.get_centre = function(self)
+            return v2.mk(self.x + self.w / 2, self.y + self.h / 2)
+        end
+
         p.update = function(self)
             self.last_pos = self.v2_pos(self)
 

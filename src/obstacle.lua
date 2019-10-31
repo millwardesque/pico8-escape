@@ -16,6 +16,10 @@ local obstacle = {
             return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.width - 1, self.height - 1) }
         end
 
+        o.get_centre = function(self)
+            return v2.mk(self.x + self.width / 2, self.y + self.height / 2)
+        end
+
         o.update = function(self)
             self.x += self.vel.x
             self.y += self.vel.y

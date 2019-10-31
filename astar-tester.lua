@@ -103,7 +103,7 @@ function restart_level()
     -- Generate the player
     p1 = player.mk(48, 48, 1)
     add(scene, p1)
-    p1_path = room.find_path(rm, p1.v2_pos(p1), t1.v2_pos(t1))
+    p1_path = room.find_path(rm, p1.get_centre(p1), t1.v2_pos(t1))
 end
 
 function _update()
@@ -141,7 +141,7 @@ function _update()
         collide_with_obstacle(p1, o)
     end
 
-    p1_path = room.find_path(rm, p1.v2_pos(p1), t1.v2_pos(t1))
+    p1_path = room.find_path(rm, p1.get_centre(p1), t1.v2_pos(t1))
 end
 
 function _draw()

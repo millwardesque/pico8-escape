@@ -154,13 +154,12 @@ local room = {
             local node = path_grid[closed[#closed].y + 1][closed[#closed].x + 1]
 
             while (node != nil) do
-                add(reverse_path, room.world_pos(rm, node.coords))
+                add(reverse_path, room.world_pos(rm, node.coords) + v2.mk(4, 4))
                 node = node.parent
             end
 
-            -- Adjust start/end points to the ones provided as args rather than the grid coords
-            add(path, origin)
-            for i = #reverse_path-1,2,-1 do
+            -- Ignore start point
+            for i = #reverse_path - 1,2,-1 do
                 add(path, reverse_path[i])
             end
             add(path, dest)
