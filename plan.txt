@@ -1,11 +1,9 @@
 Core functionality:
     AABB collision response on diagonal case
         * https://hopefultoad.blogspot.com/2017/09/2d-aabb-collision-detection-and-response.html
-    A*: Add diagonals
+    A*: Add diagonals to search squares
 
 Player/Villain interaction:
-    Villain has to walk around obstacles
-        * Villain walks diagonally to furthest point in path w/o an obstacle in the way
     Villain can attack player through walls
     Villain can attack player through windows
     Player can push obstacles in front of villain
@@ -13,12 +11,14 @@ Player/Villain interaction:
     Fog of war?
 
 Rooms:
+    Draw room edges
     Windows (doors w/ different sprite)
     Adjoining rooms / hallways
     Randomize room dimensions
     Randomize room obstacles
     Remember rooms attached to doors
     Pre-fab room obstacle sets
+
 
 Visual:
     Wipe or fade to replace level-complete screen

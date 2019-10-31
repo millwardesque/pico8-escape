@@ -27,6 +27,28 @@ local room = {
                 end
             end
 
+            -- Draw wall
+            local wall_x = x - 8
+            local wall_y = y - 8
+
+            -- Top and bottom walls
+            for col=0, go.cols + 1 do
+                renderable.sprite = go.tileset + 19
+                renderable.default_render(renderable, wall_x + col * 8, wall_y)
+
+                renderable.sprite = go.tileset + 17
+                renderable.default_render(renderable, wall_x + col * 8, wall_y + (go.rows + 1) * 8)
+            end
+
+            -- Left and right walls
+            for row=0, go.rows + 1 do
+                renderable.sprite = go.tileset + 16
+                renderable.default_render(renderable, wall_x, wall_y + row * 8)
+
+                renderable.sprite = go.tileset + 18
+                renderable.default_render(renderable, wall_x + (go.cols + 1) * 8, wall_y + row * 8)
+            end
+
             -- Draw doors
             renderable.sprite = go.tileset + 1
             for door in all(go.doors) do
