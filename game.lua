@@ -63,7 +63,7 @@ function next_level()
     local y_offset = 64 - (rows * 8) / 2
 
     -- Generate some obstacles
-    local num_obstacles = 2
+    local num_obstacles = 5
     obstacles = {}
     for i=1,num_obstacles do
 
