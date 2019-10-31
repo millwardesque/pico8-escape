@@ -14,7 +14,7 @@ ui = require('ui')
 
 cam = nil
 p1 = nil
-p1_walk_speed = 2
+p1_walk_speed = 1.6
 p1_caught_speed = p1_walk_speed / 4
 p1_run_speed = p1_walk_speed * 1.5
 p1_caught_time = 0

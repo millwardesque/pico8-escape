@@ -13,7 +13,6 @@ Player/Villain interaction:
     Fog of war?
 
 Rooms:
-    Villain hidden until player gets close
     Windows (doors w/ different sprite)
     Adjoining rooms / hallways
     Randomize room dimensions
