@@ -4,14 +4,12 @@ Core functionality:
     A*: Add diagonals to search squares
 
 Player/Villain interaction:
-    Villain can attack player through walls
-    Villain can attack player through windows
     Player can push obstacles in front of villain
     Multiple villain types / behaviours than get randomized per game session
     Fog of war?
 
 Rooms:
-    Draw room edges
+    Day-night background color
     Windows (doors w/ different sprite)
     Adjoining rooms / hallways
     Randomize room dimensions

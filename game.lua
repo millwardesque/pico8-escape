@@ -97,7 +97,24 @@ function next_level()
     are_doors_active = false
 
     -- Add the villain
-    v1 = villain.mk(x_offset + level_room.doors[2].x * 8, y_offset + level_room.doors[2].y * 8, 32, p1, v1_speed)
+    local v1_start_cell = v2.zero()
+    if flr(rnd(2)) == 0 then
+        if flr(rnd(2)) == 0 then
+            v1_start_cell.x = 0
+        else
+            v1_start_cell.x = cols - 1
+        end
+        v1_start_cell.y = flr(rnd(rows))
+    else
+        if flr(rnd(2)) == 0 then
+            v1_start_cell.y = 0
+        else
+            v1_start_cell.y = rows - 1
+        end
+        v1_start_cell.x = flr(rnd(cols))
+    end
+    local v1_start = room.world_pos(level_room, v1_start_cell)
+    v1 = villain.mk(v1_start.x, v1_start.y, 32, p1, v1_speed)
     add(scene, v1)
 
     v1.set_path(v1, room.find_path(level_room, v1.get_centre(v1), p1.get_centre(p1)))
