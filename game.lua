@@ -40,6 +40,11 @@ levels_completed = 0
 secs_per_level = 30
 obstacles = {}
 
+sky_colors = {0,1,2,13,14,9,6,12}
+sky_step_length = flr(stat(8) * (secs_per_level + 1) / #sky_colors)
+sky_frame_count = 0
+sky_color_index = 0
+
 background = {x = 0, y = 0, w = 16, h = 16}
 
 scene = nil
@@ -56,8 +61,8 @@ function next_level()
     add(scene, cam)
 
     -- Generate the room
-    local cols = 12
-    local rows = 6
+    local cols = 5 + flr(rnd(8))
+    local rows = 5 + flr(rnd(8))
     local spritesheet_index = 64
     local x_offset = 64 - (cols * 8) / 2
     local y_offset = 64 - (rows * 8) / 2
@@ -122,6 +127,8 @@ function next_level()
     if level_timer == nil then
         level_timer = secs_per_level * stat(8)
     end
+
+    sky_frame_count = 0
 
     state = "ingame"
 
@@ -262,7 +269,11 @@ function _update()
             v1.set_path(v1, room.find_path(level_room, v1.get_centre(v1), p1.get_centre(p1)))
         end
 
-        log.log("P1:"..v2.str(p1.v2_pos(p1)).." / "..v2.str(room.grid_coords(level_room, p1.v2_pos(p1))))
+        sky_frame_count += 1
+        while sky_frame_count >= sky_step_length do
+            sky_frame_count -= sky_step_length
+            sky_color_index = (sky_color_index + 1) % #sky_colors
+        end
 
         if p1.stamina <= 0 then
             state = "gameover"
@@ -327,7 +338,7 @@ function collide_with_obstacle(actor, obst, actor_size_x, actor_size_y)
 end
 
 function _draw()
-    cls(0)
+    cls(sky_colors[sky_color_index + 1])
 
     renderer.render(cam, scene, background)
 

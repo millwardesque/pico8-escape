@@ -4,16 +4,15 @@ Core functionality:
     A*: Add diagonals to search squares
 
 Player/Villain interaction:
+    Villain can only hide behind certain obstacles
     Player can push obstacles in front of villain
     Multiple villain types / behaviours than get randomized per game session
     Fog of war?
 
 Rooms:
-    Day-night background color
     Windows (doors w/ different sprite)
     Adjoining rooms / hallways
-    Randomize room dimensions
-    Randomize room obstacles
+    Retain room layout
     Remember rooms attached to doors
     Pre-fab room obstacle sets
 
