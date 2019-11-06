@@ -13,6 +13,14 @@ local ui = {
 
         rectfill(x0, y, x1, y + h, 14)
         rectfill(current_x0, y + 1, current_x1, y + h - 1, 8)
+    end,
+
+    render_horiz_wipe = function()
+        local pixels_per_frame = 6
+        for x=0,ceil(128 / pixels_per_frame) do
+            rectfill(0, 0, x * pixels_per_frame, 127, 0)
+            yield()
+        end
     end
 }
 return ui

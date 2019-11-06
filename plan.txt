@@ -15,10 +15,9 @@ Rooms:
     Retain room layout
     Remember rooms attached to doors
     Pre-fab room obstacle sets
-
+    Key to open door
 
 Visual:
-    Wipe or fade to replace level-complete screen
     Animation
     Killing blow at zero stamina
 

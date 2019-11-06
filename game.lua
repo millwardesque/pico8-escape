@@ -12,6 +12,8 @@ utils = require('utils')
 villain = require('villain')
 ui = require('ui')
 
+screen_wipe = nil
+
 cam = nil
 p1 = nil
 p1_walk_speed = 1.6
@@ -128,8 +130,6 @@ function next_level()
         level_timer = secs_per_level * stat(8)
     end
 
-    sky_frame_count = 0
-
     state = "ingame"
 
     -- log.syslog("Starting!")
@@ -151,6 +151,8 @@ function reset_game()
     p1 = nil
     v1 = nil
     level_timer = nil
+    sky_color_index = 0
+    sky_frame_count = 0
 
     next_level()
 end
@@ -279,11 +281,12 @@ function _update()
             state = "gameover"
         elseif are_doors_active and not is_p1_caught() and level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
             state = "complete"
+            screen_wipe = cocreate(ui.render_horiz_wipe)
         end
     elseif state == "complete" then
-        scene = {}
-        if btnp(4) then
+        if costatus(screen_wipe) == 'dead' then
             next_level()
+            screen_wipe = nil
         end
     elseif state == "gameover" then
         scene = {}
@@ -349,14 +352,15 @@ function _draw()
         -- @DEBUG log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
     elseif state == "complete" then
         color(7)
-        log.log("level complete!")
-        log.log("press 4 for next level")
+
+        if costatus(screen_wipe) != 'dead' then
+          coresume(screen_wipe)
+        end
     elseif state == "gameover" then
         color(7)
         log.log("game over!")
         log.log("levels completed: "..levels_completed)
         log.log("press 4 to try again")
     end
-
     log.render()
 end
