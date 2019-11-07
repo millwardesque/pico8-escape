@@ -73,8 +73,8 @@ function next_level()
     for i=1,num_obstacles do
 
         -- Generate coords inside the room
-        local x = x_offset + (1 + flr(rnd(cols - 1))) * 8
-        local y = y_offset + (1 + flr(rnd(rows - 1))) * 8
+        local x = x_offset + (1 + flr(rnd(cols - 2))) * 8
+        local y = y_offset + (1 + flr(rnd(rows - 2))) * 8
 
         local o = obstacle.mk(x, y, 8, 8, 128)
         add(obstacles, o)

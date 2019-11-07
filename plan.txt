@@ -23,4 +23,3 @@ Visual:
 
 Bugs:
     Use A* tester to figure out why villain sometimes walks away from player
-    No obstacles on doors
