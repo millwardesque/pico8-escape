@@ -16,6 +16,10 @@ local game_obj = {
         end
 
         return g
+    end,
+
+    pos = function(go)
+        return v2.mk(go.x, go.y)
     end
 }
 return game_obj

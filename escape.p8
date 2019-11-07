@@ -70,6 +70,10 @@ local game_obj = {
         end
 
         return g
+    end,
+
+    pos = function(go)
+        return v2.mk(go.x, go.y)
     end
 }
 return game_obj
@@ -305,39 +309,27 @@ local renderer = {
 }
 return renderer
 end
-package._c["level"]=function()
-local level = {
-    mk = function()
-        local l = {
-        }
-
-        return l
-    end,
-}
-
-return level
-end
 package._c["obstacle"]=function()
 game_obj = require('game_obj')
 renderer = require('renderer')
 v2 = require('v2')
 
 local obstacle = {
-    mk = function(x, y, width, height, sprite)
-        local o = game_obj.mk('obstacle', 'obstacle', x, y)
-        o.width = width
-        o.height = height
+    mk = function(x, y, w, h, sprite)
+        local o = game_obj.mk('obs', 'obs', x, y)
+        o.w = w
+        o.h = h
         o.vel = v2.zero()
 
         renderer.attach(o, sprite)
         o.renderable.draw_order = 10
 
         o.get_rect = function(self)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.width - 1, self.height - 1) }
+            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }
         end
 
         o.get_centre = function(self)
-            return v2.mk(self.x + self.width / 2, self.y + self.height / 2)
+            return v2.mk(self.x + self.w / 2, self.y + self.h / 2)
         end
 
         o.update = function(self)
@@ -368,12 +360,11 @@ local player = {
         p.max_stamina = 100
         p.stamina = 100
 
-
         renderer.attach(p, sprite)
         p.renderable.draw_order = 10
 
         p.get_rect = function(self)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.w - 1, self.h - 1) }
+            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }
         end
 
         p.get_last_rect = function(self)
@@ -385,7 +376,7 @@ local player = {
         end
 
         p.update = function(self)
-            self.last_pos = self.v2_pos(self)
+            self.last_pos = game_obj.pos(self)
 
             self.x += self.vel.x
             self.y += self.vel.y
@@ -396,8 +387,8 @@ local player = {
             self.set_stamina(self, self.stamina)
         end
 
-        p.set_stamina = function(self, new_stamina)
-            self.stamina = min(self.max_stamina, max(0, new_stamina))
+        p.set_stamina = function(self, stamina)
+            self.stamina = min(self.max_stamina, max(0, stamina))
         end
 
         p.renderable.render = function(renderable, x, y)
@@ -405,8 +396,8 @@ local player = {
             renderable.default_render(renderable, x, y)
 
             -- Draw previous frame's rect
-            local rect = go.get_last_rect(go)
-            utils.draw_corners(rect)
+            -- local rect = go.get_last_rect(go)
+            -- utils.draw_corners(rect)
         end
 
         return p
@@ -438,10 +429,7 @@ local room = {
             renderable.sprite = go.tileset
             for col=0, go.cols - 1 do
                 for row=0, go.rows - 1 do
-                    x_offset = col * 8
-                    y_offset = row * 8
-
-                    renderable.default_render(renderable, x + x_offset, y + y_offset)
+                    renderable.default_render(renderable, x + col * 8, y + row * 8)
                 end
             end
 
@@ -470,25 +458,23 @@ local room = {
             -- Draw doors
             renderable.sprite = go.tileset + 1
             for door in all(go.doors) do
-                x_offset = door.x * 8
-                y_offset = door.y * 8
-                renderable.default_render(renderable, x + x_offset, y + y_offset)
+                renderable.default_render(renderable, x + door.x * 8, y + door.y * 8)
             end
 
             -- Draw door collider corners
-            for door in all(go.doors) do
-                door_rect = go.get_door_rect(go, door)
-                utils.draw_corners(door_rect)
-            end
+            -- for door in all(go.doors) do
+            --     door_rect = go.get_door_rect(go, door)
+            --     utils.draw_corners(door_rect)
+            -- end
         end
 
         r.get_door_rect = function(self, door)
-            local door_origin = self.v2_pos(self) + v2.mk(door.x * 8, door.y * 8)
-            return { door_origin, door_origin + v2.mk(8 - 1, 8 - 1) }
+            local origin = game_obj.pos(self) + v2.mk(door.x * 8, door.y * 8)
+            return { origin, origin + v2.mk(8 - 1, 8 - 1) }
         end
 
         r.get_room_rect = function(self, door)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(r.cols * 8, r.rows * 8) }
+            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(r.cols * 8, r.rows * 8) }
         end
 
         r.is_at_door = function(self, p1)
@@ -670,23 +656,20 @@ local room = {
             h = h
         }
 
-        -- log.syslog("SCORING: "..v2.str(my_coords)..": "..(g + h))
         return cell
     end,
 
     grid_coords = function(rm, world_pos)
-        local lcl = world_pos - rm.v2_pos(rm)
+        local lcl = world_pos - game_obj.pos(rm)
 
         local grid_x = flr(lcl.x / 8)
         local grid_y = flr(lcl.y / 8)
-
-        -- log.syslog("GC: "..v2.str(world_pos).." in "..v2.str(rm.v2_pos(rm)).." = LCL "..v2.str(lcl).." = GC "..v2.str(v2.mk(grid_x, grid_y)))
 
         return v2.mk(grid_x, grid_y)
     end,
 
     world_pos = function(rm, grid_coords)
-        return rm.v2_pos(rm) + v2.mk((grid_coords.x) * 8, (grid_coords.y) * 8)
+        return game_obj.pos(rm) + v2.mk((grid_coords.x) * 8, (grid_coords.y) * 8)
     end,
 
     cell_rect = function(rm, coords)
@@ -700,39 +683,21 @@ local room = {
 
     generate_doors = function(rm, num_doors)
         -- Generate the doors
-        local doors = {}
-        while #doors < num_doors do
-            if flr(rnd(2)) == 1 then
-                if flr(rnd(2)) == 1 then
-                    x = 0
-                else
-                    x = rm.cols - 1
-                end
-                y = flr(rnd(rm.rows))
-            else
-                if flr(rnd(2)) == 1 then
-                    y = 0
-                else
-                    y = rm.rows - 1
-                end
-                x = flr(rnd(rm.cols))
-            end
-
-            local new_door = v2.mk(x, y)
+        rm.doors = {}
+        while #rm.doors < num_doors do
+            local door = utils.rnd_outer_grid(rm.rows, rm.cols)
             local door_exists = false
-            for d in all(doors) do
-                if new_door.x == d.x and new_door.y == d.y then
+            for d in all(rm.doors) do
+                if door.x == d.x and door.y == d.y then
                     door_exists = true
                     break
                 end
             end
 
-            if not door_exists then
-                add(doors, new_door)
+            if door_exists == false then
+                add(rm.doors, door)
             end
         end
-
-        rm.doors = doors
     end
 }
 
@@ -743,14 +708,6 @@ log = require('log')
 v2 = require('v2')
 
 local utils = {
-    rnd_v2_near = function(x, y, min_dist, zone_size)
-        local angle = rnd(1.0)
-        local dist = min_dist + flr(rnd(zone_size / 2.0))
-        local x = x + dist * cos(angle)
-        local y = y + dist * sin(angle)
-        return v2.mk(x, y)
-    end,
-
     circle_col = function(p1, r1, p2, r2)
         local dist = v2.mag(p2 - p1)
         if dist < 0 then
@@ -790,6 +747,29 @@ local utils = {
         else
             return "f"
         end
+    end,
+
+    rnd_outer_grid = function(rows, cols)
+        local x
+        local y
+
+        if flr(rnd(2)) == 1 then
+            if flr(rnd(2)) == 1 then
+                x = 0
+            else
+                x = cols - 1
+            end
+            y = flr(rnd(rows))
+        else
+            if flr(rnd(2)) == 1 then
+                y = 0
+            else
+                y = rows - 1
+            end
+            x = flr(rnd(cols))
+        end
+
+        return v2.mk(x, y)
     end,
 }
 
@@ -849,7 +829,7 @@ local villain = {
 
         v.dislodge = function(self, p1, push_amount, stun_length)
             -- Push away from target back
-            local push_vec = self.dir_to_point(self, self.target.v2_pos(self.target)) * -1 * push_amount
+            local push_vec = self.dir_to_point(self, game_obj.pos(self.target)) * -1 * push_amount
             self.x += push_vec.x
             self.y += push_vec.y
 
@@ -875,7 +855,7 @@ local villain = {
             if self.state == "pursuit" then
                 if self.path != nil then
                     if self.path_index > #(self.path) then
-                        self.vel = self.dir_to_point(self, self.target.v2_pos(self.target)) * self.speed
+                        self.vel = self.dir_to_point(self, game_obj.pos(self.target)) * self.speed
                     else
                         local rect = self.get_rect(self)
                         if utils.pt_in_rect(self.path[self.path_index], rect[1], rect[2]) then
@@ -883,7 +863,7 @@ local villain = {
                         end
 
                         if self.path_index > #(self.path) then
-                            self.vel = self.dir_to_point(self, self.target.v2_pos(self.target)) * self.speed
+                            self.vel = self.dir_to_point(self, game_obj.pos(self.target)) * self.speed
                         else
                             self.vel = self.dir_to_point(self, self.path[self.path_index]) * self.speed
                         end
@@ -905,13 +885,13 @@ local villain = {
                 end
             end
 
-            self.last_pos = self.v2_pos(self)
+            self.last_pos = game_obj.pos(self)
             self.x += self.vel.x
             self.y += self.vel.y
         end
 
         v.get_rect = function(self)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.w - 1, self.h - 1) }
+            return { game_obj.pos(self),game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }
         end
 
         v.get_last_rect = function(self)
@@ -930,26 +910,24 @@ return villain
 end
 package._c["ui"]=function()
 local ui = {
-    render_stamina = function(current, max)
-        container_margin = 4
-        container_width = 128 - (container_margin * 2)
-        px_per_stamina = container_width / 100
-        h = 5
-        x0 = container_margin
-        y = 127 - h - container_margin
-        x1 = container_margin + (max * px_per_stamina)
+    stamina = function(current, max)
+        local margin = 4
+        local w = 128 - (margin * 2)
+        local h = 5
+        local px_per_stamina = w / 100
+        x0 = margin
+        y = 127 - h - margin
+        x1 = margin + (max * px_per_stamina)
         pct = (x1 - 1 - x0 - 1) * (current / max)
-        current_x0 = x0 + 1
-        current_x1 = x0 + 1 + pct
 
         rectfill(x0, y, x1, y + h, 14)
-        rectfill(current_x0, y + 1, current_x1, y + h - 1, 8)
+        rectfill(x0 + 1, y + 1, x0 + 1 + pct, y + h - 1, 8)
     end,
 
-    render_horiz_wipe = function()
-        local pixels_per_frame = 6
-        for x=0,ceil(128 / pixels_per_frame) do
-            rectfill(0, 0, x * pixels_per_frame, 127, 0)
+    horiz_wipe = function()
+        local px_per_frame = 6
+        for x=0, ceil(128 / px_per_frame) do
+            rectfill(0, 0, x * px_per_frame, 127, 0)
             yield()
         end
     end
@@ -963,12 +941,10 @@ if (l[p]==nil) l[p]=true
 return l[p]
 end
 game_cam = require('game_cam')
-game_obj = require('game_obj')
 log = require('log')
 renderer = require('renderer')
 v2 = require('v2')
 
-level = require('level')
 obstacle = require('obstacle')
 player = require('player')
 room = require('room')
@@ -1068,22 +1044,7 @@ function next_level()
     are_doors_active = false
 
     -- Add the villain
-    local v1_start_cell = v2.zero()
-    if flr(rnd(2)) == 0 then
-        if flr(rnd(2)) == 0 then
-            v1_start_cell.x = 0
-        else
-            v1_start_cell.x = cols - 1
-        end
-        v1_start_cell.y = flr(rnd(rows))
-    else
-        if flr(rnd(2)) == 0 then
-            v1_start_cell.y = 0
-        else
-            v1_start_cell.y = rows - 1
-        end
-        v1_start_cell.x = flr(rnd(cols))
-    end
+    local v1_start_cell = utils.rnd_outer_grid(rows, cols)
     local v1_start = room.world_pos(level_room, v1_start_cell)
     v1 = villain.mk(v1_start.x, v1_start.y, 32, p1, v1_speed)
     add(scene, v1)
@@ -1245,7 +1206,7 @@ function _update()
             state = "gameover"
         elseif are_doors_active and not is_p1_caught() and level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
             state = "complete"
-            screen_wipe = cocreate(ui.render_horiz_wipe)
+            screen_wipe = cocreate(ui.horiz_wipe)
         end
     elseif state == "complete" then
         if costatus(screen_wipe) == 'dead' then
@@ -1311,7 +1272,7 @@ function _draw()
 
     if state == "ingame" then
         log.log("Timer: "..flr(level_timer / stat(8)))
-        ui.render_stamina(p1.stamina, p1.max_stamina)
+        ui.stamina(p1.stamina, p1.max_stamina)
 
         -- @DEBUG log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
     elseif state == "complete" then

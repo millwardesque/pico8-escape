@@ -1,10 +1,8 @@
 game_cam = require('game_cam')
-game_obj = require('game_obj')
 log = require('log')
 renderer = require('renderer')
 v2 = require('v2')
 
-level = require('level')
 obstacle = require('obstacle')
 player = require('player')
 room = require('room')
@@ -104,22 +102,7 @@ function next_level()
     are_doors_active = false
 
     -- Add the villain
-    local v1_start_cell = v2.zero()
-    if flr(rnd(2)) == 0 then
-        if flr(rnd(2)) == 0 then
-            v1_start_cell.x = 0
-        else
-            v1_start_cell.x = cols - 1
-        end
-        v1_start_cell.y = flr(rnd(rows))
-    else
-        if flr(rnd(2)) == 0 then
-            v1_start_cell.y = 0
-        else
-            v1_start_cell.y = rows - 1
-        end
-        v1_start_cell.x = flr(rnd(cols))
-    end
+    local v1_start_cell = utils.rnd_outer_grid(rows, cols)
     local v1_start = room.world_pos(level_room, v1_start_cell)
     v1 = villain.mk(v1_start.x, v1_start.y, 32, p1, v1_speed)
     add(scene, v1)
@@ -281,7 +264,7 @@ function _update()
             state = "gameover"
         elseif are_doors_active and not is_p1_caught() and level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
             state = "complete"
-            screen_wipe = cocreate(ui.render_horiz_wipe)
+            screen_wipe = cocreate(ui.horiz_wipe)
         end
     elseif state == "complete" then
         if costatus(screen_wipe) == 'dead' then
@@ -347,7 +330,7 @@ function _draw()
 
     if state == "ingame" then
         log.log("Timer: "..flr(level_timer / stat(8)))
-        ui.render_stamina(p1.stamina, p1.max_stamina)
+        ui.stamina(p1.stamina, p1.max_stamina)
 
         -- @DEBUG log.log("Mem: "..(stat(0)/2048.0).."% CPU: "..(stat(1)/1.0).."%")
     elseif state == "complete" then

@@ -2,14 +2,6 @@ log = require('log')
 v2 = require('v2')
 
 local utils = {
-    rnd_v2_near = function(x, y, min_dist, zone_size)
-        local angle = rnd(1.0)
-        local dist = min_dist + flr(rnd(zone_size / 2.0))
-        local x = x + dist * cos(angle)
-        local y = y + dist * sin(angle)
-        return v2.mk(x, y)
-    end,
-
     circle_col = function(p1, r1, p2, r2)
         local dist = v2.mag(p2 - p1)
         if dist < 0 then
@@ -49,6 +41,29 @@ local utils = {
         else
             return "f"
         end
+    end,
+
+    rnd_outer_grid = function(rows, cols)
+        local x
+        local y
+
+        if flr(rnd(2)) == 1 then
+            if flr(rnd(2)) == 1 then
+                x = 0
+            else
+                x = cols - 1
+            end
+            y = flr(rnd(rows))
+        else
+            if flr(rnd(2)) == 1 then
+                y = 0
+            else
+                y = rows - 1
+            end
+            x = flr(rnd(cols))
+        end
+
+        return v2.mk(x, y)
     end,
 }
 

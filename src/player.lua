@@ -14,12 +14,11 @@ local player = {
         p.max_stamina = 100
         p.stamina = 100
 
-
         renderer.attach(p, sprite)
         p.renderable.draw_order = 10
 
         p.get_rect = function(self)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.w - 1, self.h - 1) }
+            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }
         end
 
         p.get_last_rect = function(self)
@@ -31,7 +30,7 @@ local player = {
         end
 
         p.update = function(self)
-            self.last_pos = self.v2_pos(self)
+            self.last_pos = game_obj.pos(self)
 
             self.x += self.vel.x
             self.y += self.vel.y
@@ -42,8 +41,8 @@ local player = {
             self.set_stamina(self, self.stamina)
         end
 
-        p.set_stamina = function(self, new_stamina)
-            self.stamina = min(self.max_stamina, max(0, new_stamina))
+        p.set_stamina = function(self, stamina)
+            self.stamina = min(self.max_stamina, max(0, stamina))
         end
 
         p.renderable.render = function(renderable, x, y)
@@ -51,8 +50,8 @@ local player = {
             renderable.default_render(renderable, x, y)
 
             -- Draw previous frame's rect
-            local rect = go.get_last_rect(go)
-            utils.draw_corners(rect)
+            -- local rect = go.get_last_rect(go)
+            -- utils.draw_corners(rect)
         end
 
         return p

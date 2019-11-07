@@ -20,10 +20,7 @@ local room = {
             renderable.sprite = go.tileset
             for col=0, go.cols - 1 do
                 for row=0, go.rows - 1 do
-                    x_offset = col * 8
-                    y_offset = row * 8
-
-                    renderable.default_render(renderable, x + x_offset, y + y_offset)
+                    renderable.default_render(renderable, x + col * 8, y + row * 8)
                 end
             end
 
@@ -52,25 +49,23 @@ local room = {
             -- Draw doors
             renderable.sprite = go.tileset + 1
             for door in all(go.doors) do
-                x_offset = door.x * 8
-                y_offset = door.y * 8
-                renderable.default_render(renderable, x + x_offset, y + y_offset)
+                renderable.default_render(renderable, x + door.x * 8, y + door.y * 8)
             end
 
             -- Draw door collider corners
-            for door in all(go.doors) do
-                door_rect = go.get_door_rect(go, door)
-                utils.draw_corners(door_rect)
-            end
+            -- for door in all(go.doors) do
+            --     door_rect = go.get_door_rect(go, door)
+            --     utils.draw_corners(door_rect)
+            -- end
         end
 
         r.get_door_rect = function(self, door)
-            local door_origin = self.v2_pos(self) + v2.mk(door.x * 8, door.y * 8)
-            return { door_origin, door_origin + v2.mk(8 - 1, 8 - 1) }
+            local origin = game_obj.pos(self) + v2.mk(door.x * 8, door.y * 8)
+            return { origin, origin + v2.mk(8 - 1, 8 - 1) }
         end
 
         r.get_room_rect = function(self, door)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(r.cols * 8, r.rows * 8) }
+            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(r.cols * 8, r.rows * 8) }
         end
 
         r.is_at_door = function(self, p1)
@@ -252,23 +247,20 @@ local room = {
             h = h
         }
 
-        -- log.syslog("SCORING: "..v2.str(my_coords)..": "..(g + h))
         return cell
     end,
 
     grid_coords = function(rm, world_pos)
-        local lcl = world_pos - rm.v2_pos(rm)
+        local lcl = world_pos - game_obj.pos(rm)
 
         local grid_x = flr(lcl.x / 8)
         local grid_y = flr(lcl.y / 8)
-
-        -- log.syslog("GC: "..v2.str(world_pos).." in "..v2.str(rm.v2_pos(rm)).." = LCL "..v2.str(lcl).." = GC "..v2.str(v2.mk(grid_x, grid_y)))
 
         return v2.mk(grid_x, grid_y)
     end,
 
     world_pos = function(rm, grid_coords)
-        return rm.v2_pos(rm) + v2.mk((grid_coords.x) * 8, (grid_coords.y) * 8)
+        return game_obj.pos(rm) + v2.mk((grid_coords.x) * 8, (grid_coords.y) * 8)
     end,
 
     cell_rect = function(rm, coords)
@@ -282,39 +274,21 @@ local room = {
 
     generate_doors = function(rm, num_doors)
         -- Generate the doors
-        local doors = {}
-        while #doors < num_doors do
-            if flr(rnd(2)) == 1 then
-                if flr(rnd(2)) == 1 then
-                    x = 0
-                else
-                    x = rm.cols - 1
-                end
-                y = flr(rnd(rm.rows))
-            else
-                if flr(rnd(2)) == 1 then
-                    y = 0
-                else
-                    y = rm.rows - 1
-                end
-                x = flr(rnd(rm.cols))
-            end
-
-            local new_door = v2.mk(x, y)
+        rm.doors = {}
+        while #rm.doors < num_doors do
+            local door = utils.rnd_outer_grid(rm.rows, rm.cols)
             local door_exists = false
-            for d in all(doors) do
-                if new_door.x == d.x and new_door.y == d.y then
+            for d in all(rm.doors) do
+                if door.x == d.x and door.y == d.y then
                     door_exists = true
                     break
                 end
             end
 
-            if not door_exists then
-                add(doors, new_door)
+            if door_exists == false then
+                add(rm.doors, door)
             end
         end
-
-        rm.doors = doors
     end
 }
 

@@ -51,7 +51,7 @@ local villain = {
 
         v.dislodge = function(self, p1, push_amount, stun_length)
             -- Push away from target back
-            local push_vec = self.dir_to_point(self, self.target.v2_pos(self.target)) * -1 * push_amount
+            local push_vec = self.dir_to_point(self, game_obj.pos(self.target)) * -1 * push_amount
             self.x += push_vec.x
             self.y += push_vec.y
 
@@ -77,7 +77,7 @@ local villain = {
             if self.state == "pursuit" then
                 if self.path != nil then
                     if self.path_index > #(self.path) then
-                        self.vel = self.dir_to_point(self, self.target.v2_pos(self.target)) * self.speed
+                        self.vel = self.dir_to_point(self, game_obj.pos(self.target)) * self.speed
                     else
                         local rect = self.get_rect(self)
                         if utils.pt_in_rect(self.path[self.path_index], rect[1], rect[2]) then
@@ -85,7 +85,7 @@ local villain = {
                         end
 
                         if self.path_index > #(self.path) then
-                            self.vel = self.dir_to_point(self, self.target.v2_pos(self.target)) * self.speed
+                            self.vel = self.dir_to_point(self, game_obj.pos(self.target)) * self.speed
                         else
                             self.vel = self.dir_to_point(self, self.path[self.path_index]) * self.speed
                         end
@@ -107,13 +107,13 @@ local villain = {
                 end
             end
 
-            self.last_pos = self.v2_pos(self)
+            self.last_pos = game_obj.pos(self)
             self.x += self.vel.x
             self.y += self.vel.y
         end
 
         v.get_rect = function(self)
-            return { self.v2_pos(self), self.v2_pos(self) + v2.mk(self.w - 1, self.h - 1) }
+            return { game_obj.pos(self),game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }
         end
 
         v.get_last_rect = function(self)
