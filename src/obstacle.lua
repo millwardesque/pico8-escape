@@ -8,9 +8,7 @@ local obstacle = {
         o.w = w
         o.h = h
         o.vel = v2.zero()
-
-        renderer.attach(o, sprite)
-        o.renderable.draw_order = 10
+        o.sprite = sprite
 
         o.get_rect = function(self)
             return { game_obj.pos(self), game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }

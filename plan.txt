@@ -1,13 +1,14 @@
 Core functionality:
+    Ray-Rect collision
     AABB collision response on diagonal case
         * https://hopefultoad.blogspot.com/2017/09/2d-aabb-collision-detection-and-response.html
     A*: Add diagonals to search squares
 
 Player/Villain interaction:
     Villain can only hide behind certain obstacles
+        * Needs ray-rect collision
     Player can push obstacles in front of villain
     Multiple villain types / behaviours than get randomized per game session
-    Fog of war?
 
 Rooms:
     Windows (doors w/ different sprite)
@@ -16,6 +17,7 @@ Rooms:
     Remember rooms attached to doors
     Pre-fab room obstacle sets
     Key to open door
+    Player can't go back through start door (or, at least villain pursues)
 
 Visual:
     Animation

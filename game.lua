@@ -60,6 +60,11 @@ function next_level()
     cam = game_cam.mk("main-cam", 0, 0, 128, 128, 16, 16)
     add(scene, cam)
 
+    -- Define the player
+    if p1 == nil then
+        p1 = player.mk(0, 0, 1)
+    end
+
     -- Generate the room
     local cols = 5 + flr(rnd(8))
     local rows = 5 + flr(rnd(8))
@@ -81,7 +86,7 @@ function next_level()
         add(scene, o)
     end
 
-    level_room = room.mk(x_offset, y_offset, cols, rows, spritesheet_index)
+    level_room = room.mk(x_offset, y_offset, cols, rows, spritesheet_index, p1, 1)
     level_room.obstacles = obstacles
 
     -- Generate the doors
@@ -89,11 +94,7 @@ function next_level()
     room.generate_doors(level_room, num_doors)
     add(scene, level_room)
 
-    -- Add the player, and position on a door
-    if p1 == nil then
-        p1 = player.mk(0, 0, 1)
-    end
-
+    -- Position player on a door
     p1_start_cell = level_room.doors[1]
     local p1_pos = room.world_pos(level_room, p1_start_cell)
     p1.x = p1_pos.x

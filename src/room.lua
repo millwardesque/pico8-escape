@@ -1,26 +1,32 @@
 game_obj = require('game_obj')
+log = require('log')
 renderer = require('renderer')
 utils = require('utils')
 
 local room = {
-    mk = function(x, y, cols, rows, tileset)
+    mk = function(x, y, cols, rows, tileset, fog_target, fog_distance)
         local r = game_obj.mk('room', 'room', x, y)
         r.cols = cols
         r.rows = rows
         r.tileset = tileset
         r.doors = {}
         r.obstacles = {}
+        r.fog_target = fog_target
+        r.fog_distance = fog_distance
 
         renderer.attach(r, tileset)
 
         r.renderable.render = function(renderable, x, y)
-            go = renderable.game_obj
+            local go = renderable.game_obj
 
             -- Draw floors
+            local fog = room.fog_cells(go, game_obj.pos(go.fog_target), go.fog_distance)
             renderable.sprite = go.tileset
             for col=0, go.cols - 1 do
                 for row=0, go.rows - 1 do
-                    renderable.default_render(renderable, x + col * 8, y + row * 8)
+                    if utils.is_in_table(fog, v2.mk(col, row)) then
+                        renderable.default_render(renderable, x + col * 8, y + row * 8)
+                    end
                 end
             end
 
@@ -48,8 +54,20 @@ local room = {
 
             -- Draw doors
             renderable.sprite = go.tileset + 1
+            local obstacle_fog = room.fog_cells(go, game_obj.pos(go.fog_target), go.fog_distance + 1)
             for door in all(go.doors) do
-                renderable.default_render(renderable, x + door.x * 8, y + door.y * 8)
+                if utils.is_in_table(obstacle_fog, door) then
+                    renderable.default_render(renderable, x + door.x * 8, y + door.y * 8)
+                end
+            end
+
+            -- Draw obstacles
+            for obs in all(go.obstacles) do
+                local obs_grid = room.grid_coords(go, game_obj.pos(obs))
+                if utils.is_in_table(obstacle_fog, obs_grid) then
+                    renderable.sprite = obs.sprite
+                    renderable.default_render(renderable, obs.x, obs.y)
+                end
             end
 
             -- Draw door collider corners
@@ -107,6 +125,24 @@ local room = {
         end
 
         return r
+    end,
+
+    fog_cells = function(rm, origin, fog_range)
+        local grid_0 = room.grid_coords(rm, origin)
+        local cells = {}
+
+        log.log("g: "..v2.str(grid_0).." p: "..v2.str(origin))
+
+        for col=-fog_range,fog_range do
+            for row=-fog_range,fog_range do
+                local coord = v2.mk(col + grid_0.x, row + grid_0.y)
+                if coord.y >= 0 and coord.y < rm.rows and coord.x >= 0 and coord.x < rm.cols then
+                    add(cells, coord)
+                end
+            end
+        end
+
+        return cells
     end,
 
     find_path = function(rm, origin, dest)

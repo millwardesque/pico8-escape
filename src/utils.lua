@@ -35,6 +35,16 @@ local utils = {
         pset(rect[1].x, rect[2].y)
     end,
 
+    is_in_table = function(t, o)
+        for i in all(t) do
+            if i == o then
+                return true
+            end
+        end
+
+        return false
+    end,
+
     bool_str = function(b)
         if b then
             return "t"
