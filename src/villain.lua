@@ -1,14 +1,10 @@
-game_obj = require('game_obj')
-renderer = require('renderer')
-v2 = require('v2')
+actor = require('actor')
+game_obj  = require('game_obj')
 
 local villain = {
     mk = function(x, y, sprite, target, speed)
-        local v = game_obj.mk('villain', 'villain', x, y)
+        local v = actor.mk('villain', 'villain', x, y, sprite)
 
-        v.w = 8
-        v.h = 8
-        v.sprite = sprite
         v.target = target
         v.path = nil
         v.speed = speed
@@ -18,10 +14,6 @@ local villain = {
         v.path_index = nil
         v.hiding_distance = 30
 
-        v.last_pos = v2.zero()
-        v.vel = v2.zero()
-
-        renderer.attach(v, sprite)
         v.renderable.draw_order = 10
 
         v.renderable.render = function(self, x, y)
@@ -107,21 +99,7 @@ local villain = {
                 end
             end
 
-            self.last_pos = game_obj.pos(self)
-            self.x += self.vel.x
-            self.y += self.vel.y
-        end
-
-        v.get_rect = function(self)
-            return { game_obj.pos(self),game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }
-        end
-
-        v.get_last_rect = function(self)
-            return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
-        end
-
-        v.get_centre = function(self)
-            return v2.mk(self.x + self.w / 2, self.y + self.h / 2)
+            self.default_update(self)
         end
 
         return v

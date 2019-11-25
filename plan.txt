@@ -18,6 +18,8 @@ Rooms:
     Pre-fab room obstacle sets
     Key to open door
     Player can't go back through start door (or, at least villain pursues)
+    Rooms can have interconnected items (e.g. generator in one room powers light switches in other rooms)
+    Previous player deaths can be used to startle player
 
 Visual:
     Animation

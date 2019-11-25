@@ -310,30 +310,14 @@ local renderer = {
 return renderer
 end
 package._c["obstacle"]=function()
+actor = require('actor')
 game_obj = require('game_obj')
 renderer = require('renderer')
 v2 = require('v2')
 
 local obstacle = {
     mk = function(x, y, w, h, sprite)
-        local o = game_obj.mk('obs', 'obs', x, y)
-        o.w = w
-        o.h = h
-        o.vel = v2.zero()
-        o.sprite = sprite
-
-        o.get_rect = function(self)
-            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }
-        end
-
-        o.get_centre = function(self)
-            return v2.mk(self.x + self.w / 2, self.y + self.h / 2)
-        end
-
-        o.update = function(self)
-            self.x += self.vel.x
-            self.y += self.vel.y
-        end
+        local o = actor.mk('obs', 'obs', x, y, sprite)
 
         return o
     end
@@ -341,44 +325,70 @@ local obstacle = {
 
 return obstacle
 end
-package._c["player"]=function()
+package._c["actor"]=function()
 game_obj = require('game_obj')
 renderer = require('renderer')
 v2 = require('v2')
 
-local player = {
-    mk = function(x, y, sprite)
-        local p = game_obj.mk('player', 'player', x, y)
+local actor = {
+    mk = function(name, type, x, y, sprite)
+        local a = game_obj.mk(name, type, x, y)
 
-        p.w = 8
-        p.h = 8
-        p.sprite = sprite
-        p.vel = v2.zero()
-        p.last_pos = v2.zero()
-        p.max_stamina = 100
-        p.stamina = 100
+        a.w = 8
+        a.h = 8
+        a.sprite = sprite
+        a.vel = v2.zero()
+        a.last_pos = v2.zero()
 
-        renderer.attach(p, sprite)
-        p.renderable.draw_order = 10
+        renderer.attach(a, sprite)
 
-        p.get_rect = function(self)
+        a.get_rect = function(self)
             return { game_obj.pos(self), game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }
         end
 
-        p.get_last_rect = function(self)
+        a.get_last_rect = function(self)
             return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
         end
 
-        p.get_centre = function(self)
+        a.get_centre = function(self)
             return v2.mk(self.x + self.w / 2, self.y + self.h / 2)
         end
 
-        p.update = function(self)
-            self.last_pos = game_obj.pos(self)
+        a.update = function(self)
+            a.default_update(self)
+        end
 
+        a.default_update = function(self)
+            self.last_pos = game_obj.pos(self)
             self.x += self.vel.x
             self.y += self.vel.y
         end
+
+        a.renderable.render = function(renderable, x, y)
+            local go = renderable.game_obj
+            renderable.default_render(renderable, x, y)
+
+            -- Draw previous frame's rect
+            -- local rect = go.get_last_rect(go)
+            -- utils.draw_corners(rect)
+        end
+
+        return a
+    end
+}
+
+return actor
+end
+package._c["player"]=function()
+actor = require('actor')
+
+local player = {
+    mk = function(x, y, sprite)
+        local p = actor.mk('player', 'player', x, y, sprite)
+
+        p.max_stamina = 100
+        p.stamina = 100
+        p.renderable.draw_order = 10
 
         p.injure = function(self, damage)
             self.max_stamina = max(0, self.max_stamina - damage)
@@ -387,15 +397,6 @@ local player = {
 
         p.set_stamina = function(self, stamina)
             self.stamina = min(self.max_stamina, max(0, stamina))
-        end
-
-        p.renderable.render = function(renderable, x, y)
-            local go = renderable.game_obj
-            renderable.default_render(renderable, x, y)
-
-            -- Draw previous frame's rect
-            -- local rect = go.get_last_rect(go)
-            -- utils.draw_corners(rect)
         end
 
         return p
@@ -820,17 +821,13 @@ local utils = {
 return utils
 end
 package._c["villain"]=function()
-game_obj = require('game_obj')
-renderer = require('renderer')
-v2 = require('v2')
+actor = require('actor')
+game_obj  = require('game_obj')
 
 local villain = {
     mk = function(x, y, sprite, target, speed)
-        local v = game_obj.mk('villain', 'villain', x, y)
+        local v = actor.mk('villain', 'villain', x, y, sprite)
 
-        v.w = 8
-        v.h = 8
-        v.sprite = sprite
         v.target = target
         v.path = nil
         v.speed = speed
@@ -840,10 +837,6 @@ local villain = {
         v.path_index = nil
         v.hiding_distance = 30
 
-        v.last_pos = v2.zero()
-        v.vel = v2.zero()
-
-        renderer.attach(v, sprite)
         v.renderable.draw_order = 10
 
         v.renderable.render = function(self, x, y)
@@ -929,21 +922,7 @@ local villain = {
                 end
             end
 
-            self.last_pos = game_obj.pos(self)
-            self.x += self.vel.x
-            self.y += self.vel.y
-        end
-
-        v.get_rect = function(self)
-            return { game_obj.pos(self),game_obj.pos(self) + v2.mk(self.w - 1, self.h - 1) }
-        end
-
-        v.get_last_rect = function(self)
-            return { self.last_pos, self.last_pos + v2.mk(self.w - 1, self.h - 1) }
-        end
-
-        v.get_centre = function(self)
-            return v2.mk(self.x + self.w / 2, self.y + self.h / 2)
+            self.default_update(self)
         end
 
         return v
@@ -1351,14 +1330,14 @@ dddddddddddddddd0000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00022000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00022000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00022000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-22222222000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-22222222000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00022000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00022000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00022000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000007760000000000000776000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00776000007786000077600000778600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00778600007777600077860000777760000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00777760000778800077776000077880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077880000277600007788000027760000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000e7760002e2000000e7760002e2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0022e700002e200007e22600002e2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0100d000001d700000d010000017d000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
