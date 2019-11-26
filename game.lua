@@ -62,7 +62,7 @@ function next_level()
 
     -- Define the player
     if p1 == nil then
-        p1 = player.mk(0, 0, 1)
+        p1 = player.mk(0, 0, 0)
     end
 
     -- Generate the room

@@ -21,12 +21,14 @@ local room = {
 
             -- Draw floors
             local fog = room.fog_cells(go, game_obj.pos(go.fog_target), go.fog_distance)
-            renderable.sprite = go.tileset
             for col=0, go.cols - 1 do
                 for row=0, go.rows - 1 do
                     if utils.is_in_table(fog, v2.mk(col, row)) then
-                        renderable.default_render(renderable, x + col * 8, y + row * 8)
+                        renderable.sprite = go.tileset
+                    else
+                        renderable.sprite = go.tileset + 1
                     end
+                    renderable.default_render(renderable, x + col * 8, y + row * 8)
                 end
             end
 
@@ -53,7 +55,7 @@ local room = {
             end
 
             -- Draw doors
-            renderable.sprite = go.tileset + 1
+            renderable.sprite = go.tileset + 32
             local obstacle_fog = room.fog_cells(go, game_obj.pos(go.fog_target), go.fog_distance + 1)
             for door in all(go.doors) do
                 if utils.is_in_table(obstacle_fog, door) then

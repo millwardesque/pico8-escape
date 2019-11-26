@@ -3,7 +3,10 @@ game_obj  = require('game_obj')
 
 local villain = {
     mk = function(x, y, sprite, target, speed)
-        local v = actor.mk('villain', 'villain', x, y, sprite)
+        local anims = {}
+        anims['walk'] = {sprite, sprite + 1, sprite + 2, sprite + 3}
+
+        local v = actor.mk('villain', 'villain', x, y, sprite, anims)
 
         v.target = target
         v.path = nil
@@ -13,6 +16,7 @@ local villain = {
         v.stun_elapsed = 0
         v.path_index = nil
         v.hiding_distance = 30
+        v.set_anim(v, 'walk')
 
         v.renderable.draw_order = 10
 
@@ -81,6 +85,12 @@ local villain = {
                         else
                             self.vel = self.dir_to_point(self, self.path[self.path_index]) * self.speed
                         end
+                    end
+
+                    if self.vel.x > 0 then
+                        self.renderable.flip_x = false
+                    elseif self.vel.x < 0 then
+                        self.renderable.flip_x = true
                     end
                 end
             elseif self.is_stunned(self) then

@@ -38,10 +38,12 @@ local actor = {
         end
 
         a.default_update = function(self)
-            self.anim_frame_count = (self.anim_frame_count + 1) % FRAME_LEN
-            if self.anim_frame_count == 0 then
-                self.anim_frame_index = (self.anim_frame_index + 1) % #self.current_anim
-                self.renderable.sprite = self.current_anim[self.anim_frame_index + 1]
+            if self.current_anim != nil then
+                self.anim_frame_count = (self.anim_frame_count + 1) % FRAME_LEN
+                if self.anim_frame_count == 0 then
+                    self.anim_frame_index = (self.anim_frame_index + 1) % #self.current_anim
+                    self.renderable.sprite = self.current_anim[self.anim_frame_index + 1]
+                end
             end
 
             self.last_pos = game_obj.pos(self)
