@@ -1,11 +1,15 @@
+door = require('door')
 game_obj = require('game_obj')
 log = require('log')
 renderer = require('renderer')
 utils = require('utils')
 
 local room = {
-    mk = function(x, y, cols, rows, tileset, fog_target, fog_distance)
-        local r = game_obj.mk('room', 'room', x, y)
+    mk = function(name, cols, rows, tileset, fog_target, fog_distance)
+        local x = 64 - (cols * 8) / 2
+        local y = 64 - (rows * 8) / 2
+
+        local r = game_obj.mk(name, 'room', x, y)
         r.cols = cols
         r.rows = rows
         r.tileset = tileset
@@ -57,9 +61,10 @@ local room = {
             -- Draw doors
             renderable.sprite = go.tileset + 32 + 1
             local obstacle_fog = room.fog_cells(go, game_obj.pos(go.fog_target), go.fog_distance + 1)
-            for door in all(go.doors) do
-                if utils.is_in_table(obstacle_fog, door) then
-                    renderable.default_render(renderable, x + door.x * 8, y + door.y * 8)
+            for d in all(go.doors) do
+                local door_coords = d.get_coords(d, go)
+                if utils.is_in_table(obstacle_fog, door_coords) then
+                    renderable.default_render(renderable, x + door_coords.x * 8, y + door_coords.y * 8)
                 end
             end
 
@@ -79,22 +84,22 @@ local room = {
             -- end
         end
 
-        r.get_door_rect = function(self, door)
-            local origin = game_obj.pos(self) + v2.mk(door.x * 8, door.y * 8)
+        r.get_door_rect = function(self, d)
+            local door_coords = d.get_coords(d, self)
+            local origin = game_obj.pos(self) + v2.mk(door_coords.x * 8, door_coords.y * 8)
             return { origin, origin + v2.mk(8 - 1, 8 - 1) }
         end
 
-        r.get_room_rect = function(self, door)
-            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(r.cols * 8, r.rows * 8) }
+        r.get_room_rect = function(self)
+            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(self.cols * 8, self.rows * 8) }
         end
 
         r.is_at_door = function(self, p1)
-            p1_rect = p1.get_rect(p1)
-
-            for door in all(self.doors) do
-                local door_rect = self.get_door_rect(self, door)
+            local p1_rect = p1.get_rect(p1)
+            for d in all(self.doors) do
+                local door_rect = self.get_door_rect(self, d)
                 if utils.rect_col(door_rect[1], door_rect[2], p1_rect[1], p1_rect[2]) then
-                    return door
+                    return d
                 end
             end
 
@@ -132,8 +137,6 @@ local room = {
     fog_cells = function(rm, origin, fog_range)
         local grid_0 = room.grid_coords(rm, origin)
         local cells = {}
-
-        log.log("g: "..v2.str(grid_0).." p: "..v2.str(origin))
 
         for col=-fog_range,fog_range do
             for row=-fog_range,fog_range do
@@ -310,23 +313,28 @@ local room = {
         return rect
     end,
 
-    generate_doors = function(rm, num_doors)
-        -- Generate the doors
-        rm.doors = {}
-        while #rm.doors < num_doors do
-            local door = utils.rnd_outer_grid(rm.rows, rm.cols)
-            local door_exists = false
-            for d in all(rm.doors) do
-                if door.x == d.x and door.y == d.y then
+    add_door = function(rm, d)
+        local coords = room.find_door_location(rm)
+        d.set_coords(d, rm, coords)
+        add(rm.doors, d)
+    end,
+
+    find_door_location = function(rm)
+        local g_pos = nil
+        local door_exists = true
+        while door_exists do
+            door_exists = false
+            g_pos = utils.rnd_outer_grid(rm.rows, rm.cols)
+
+            for existing in all(rm.doors) do
+                local existing_coords = existing.get_coords(existing, rm)
+                if g_pos.x == existing_coords.x and g_pos.y == existing_coords.y then
                     door_exists = true
                     break
                 end
             end
-
-            if door_exists == false then
-                add(rm.doors, door)
-            end
         end
+        return g_pos
     end
 }
 

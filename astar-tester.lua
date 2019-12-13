@@ -73,8 +73,6 @@ function restart_level()
     local cols = 12
     local rows = 6
     local spritesheet_index = 64
-    local x_offset = 64 - (cols * 8) / 2
-    local y_offset = 64 - (rows * 8) / 2
 
     -- Generate some obstacles
     local num_obstacles = 2
@@ -89,7 +87,7 @@ function restart_level()
         add(obstacles, o)
         add(scene, o)
     end
-    rm = room.mk(x_offset, y_offset, cols, rows, spritesheet_index)
+    rm = room.mk(cols, rows, spritesheet_index)
     rm.obstacles = obstacles
 
     -- Generate the doors

@@ -18,7 +18,7 @@ local game_cam = {
 
         c.update = function(cam)
             -- Track a target
-            target = cam.cam.target
+            local target = cam.cam.target
             if target ~= nil then
                 if target.x < cam.x + cam.cam.bounds_x then
                     cam.x = target.x - cam.cam.bounds_x
@@ -309,6 +309,22 @@ local renderer = {
 }
 return renderer
 end
+package._c["level"]=function()
+local level = {
+    mk = function()
+        return {
+            p1 = nil,
+            v1 = nil,
+            level_timer = 0,
+            room_timer = 0,
+            rooms = {},
+            flags = {},
+            -- Eventually: corpses, flags, items, etc.
+        }
+    end,
+}
+return level
+end
 package._c["obstacle"]=function()
 actor = require('actor')
 game_obj = require('game_obj')
@@ -441,14 +457,18 @@ local player = {
 return player
 end
 package._c["room"]=function()
+door = require('door')
 game_obj = require('game_obj')
 log = require('log')
 renderer = require('renderer')
 utils = require('utils')
 
 local room = {
-    mk = function(x, y, cols, rows, tileset, fog_target, fog_distance)
-        local r = game_obj.mk('room', 'room', x, y)
+    mk = function(name, cols, rows, tileset, fog_target, fog_distance)
+        local x = 64 - (cols * 8) / 2
+        local y = 64 - (rows * 8) / 2
+
+        local r = game_obj.mk(name, 'room', x, y)
         r.cols = cols
         r.rows = rows
         r.tileset = tileset
@@ -500,9 +520,10 @@ local room = {
             -- Draw doors
             renderable.sprite = go.tileset + 32 + 1
             local obstacle_fog = room.fog_cells(go, game_obj.pos(go.fog_target), go.fog_distance + 1)
-            for door in all(go.doors) do
-                if utils.is_in_table(obstacle_fog, door) then
-                    renderable.default_render(renderable, x + door.x * 8, y + door.y * 8)
+            for d in all(go.doors) do
+                local door_coords = d.get_coords(d, go)
+                if utils.is_in_table(obstacle_fog, door_coords) then
+                    renderable.default_render(renderable, x + door_coords.x * 8, y + door_coords.y * 8)
                 end
             end
 
@@ -522,22 +543,22 @@ local room = {
             -- end
         end
 
-        r.get_door_rect = function(self, door)
-            local origin = game_obj.pos(self) + v2.mk(door.x * 8, door.y * 8)
+        r.get_door_rect = function(self, d)
+            local door_coords = d.get_coords(d, self)
+            local origin = game_obj.pos(self) + v2.mk(door_coords.x * 8, door_coords.y * 8)
             return { origin, origin + v2.mk(8 - 1, 8 - 1) }
         end
 
-        r.get_room_rect = function(self, door)
-            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(r.cols * 8, r.rows * 8) }
+        r.get_room_rect = function(self)
+            return { game_obj.pos(self), game_obj.pos(self) + v2.mk(self.cols * 8, self.rows * 8) }
         end
 
         r.is_at_door = function(self, p1)
-            p1_rect = p1.get_rect(p1)
-
-            for door in all(self.doors) do
-                local door_rect = self.get_door_rect(self, door)
+            local p1_rect = p1.get_rect(p1)
+            for d in all(self.doors) do
+                local door_rect = self.get_door_rect(self, d)
                 if utils.rect_col(door_rect[1], door_rect[2], p1_rect[1], p1_rect[2]) then
-                    return door
+                    return d
                 end
             end
 
@@ -575,8 +596,6 @@ local room = {
     fog_cells = function(rm, origin, fog_range)
         local grid_0 = room.grid_coords(rm, origin)
         local cells = {}
-
-        log.log("g: "..v2.str(grid_0).." p: "..v2.str(origin))
 
         for col=-fog_range,fog_range do
             for row=-fog_range,fog_range do
@@ -753,27 +772,85 @@ local room = {
         return rect
     end,
 
-    generate_doors = function(rm, num_doors)
-        -- Generate the doors
-        rm.doors = {}
-        while #rm.doors < num_doors do
-            local door = utils.rnd_outer_grid(rm.rows, rm.cols)
-            local door_exists = false
-            for d in all(rm.doors) do
-                if door.x == d.x and door.y == d.y then
+    add_door = function(rm, d)
+        local coords = room.find_door_location(rm)
+        d.set_coords(d, rm, coords)
+        add(rm.doors, d)
+    end,
+
+    find_door_location = function(rm)
+        local g_pos = nil
+        local door_exists = true
+        while door_exists do
+            door_exists = false
+            g_pos = utils.rnd_outer_grid(rm.rows, rm.cols)
+
+            for existing in all(rm.doors) do
+                local existing_coords = existing.get_coords(existing, rm)
+                if g_pos.x == existing_coords.x and g_pos.y == existing_coords.y then
                     door_exists = true
                     break
                 end
             end
-
-            if door_exists == false then
-                add(rm.doors, door)
-            end
         end
+        return g_pos
     end
 }
 
 return room
+end
+package._c["door"]=function()
+log = require('log')
+
+local door = {
+    mk = function(rm1, rm2)
+        local d = {
+            exit1 = {
+                rm = rm1,
+                coords = nil
+            },
+            exit2 = {
+                rm = rm2,
+                coords = nil
+            },
+        }
+
+        d.set_coords = function(self, rm, coords)
+            local exit = self.my_exit(self, rm)
+            exit.coords = coords
+        end
+
+        d.get_coords = function(self, rm)
+            local exit = self.my_exit(self, rm)
+            return exit.coords
+        end
+
+        d.my_exit = function(self, rm)
+            if self.exit1.rm == rm then
+                return self.exit1
+            elseif self.exit2.rm == rm then
+                return self.exit2
+            else
+                log.syslog("d["..self.exit1.rm.name..","..self.exit2.rm.name.."]: Couldn't find my exit for "..rm.name)
+                return nil
+            end
+        end
+
+        d.other_exit = function(self, rm)
+            if self.exit1.rm == rm then
+                return self.exit2
+            elseif self.exit2.rm == rm then
+                return self.exit1
+            else
+                log.syslog("d["..self.exit1.rm.name..","..self.exit2.rm.name.."]: Couldn't find other exit from "..rm.name)
+                return nil
+            end
+        end
+
+        return d
+    end,
+}
+return door
 end
 package._c["utils"]=function()
 log = require('log')
@@ -1015,6 +1092,7 @@ log = require('log')
 renderer = require('renderer')
 v2 = require('v2')
 
+level = require('level')
 obstacle = require('obstacle')
 player = require('player')
 room = require('room')
@@ -1039,16 +1117,19 @@ escape_threshold = 5
 
 v1 = nil
 v1_speed = 1.5
+v1_spawn_delay = 2
+v1_enabled = false
 
 level_timer = nil
-level_room = nil
+room_timer = nil
+active_room = nil
+next_room_to_load = nil
+next_room_to_load_p1_start = nil
 are_doors_active = false -- Doors become active once the player moves off the starting door
 p1_start_cell = nil
 
-active_level = nil
-active_level_index = nil
+rooms = nil
 levels = {}
-levels_completed = 0
 secs_per_level = 30
 obstacles = {}
 
@@ -1063,94 +1144,131 @@ scene = nil
 state = "ingame"
 
 
-function next_level()
-    active_level_index = (active_level_index % #levels) + 1
-    active_level = levels[active_level_index]
+function mk_rooms(num_rooms, min_dim, max_dim)
+    local rooms = {}
+    local room_pos = v2.mk(64, 64)
+    for i = 1,num_rooms do
+        local cols = min_dim + flr(rnd(max_dim - min_dim + 1))
+        local rows = min_dim + flr(rnd(max_dim - min_dim + 1))
+        local spritesheet_index = 64
+        local rm = room.mk('rm-'..i, cols, rows, spritesheet_index, p1, max_dim)
 
+        add(rooms, rm)
+    end
+    return rooms
+end
+
+function add_obstacles(rm, num_obstacles, sprite)
+    local obstacles = {}
+    for i=1,num_obstacles do
+        -- Generate coords inside the room
+        local x = rm.x + (1 + flr(rnd(rm.cols - 1))) * 8
+        local y = rm.y + (1 + flr(rnd(rm.rows - 1))) * 8
+        local o = obstacle.mk(x, y, 8, 8, sprite)
+
+        add(obstacles, o)
+    end
+    rm.obstacles = obstacles
+end
+
+function connect_rooms(rooms)
+    local doors = {}
+    for i=1,#rooms do
+        local next_room = i + 1
+        if next_room > #rooms then
+            next_room = 1
+        end
+
+        local d = door.mk(rooms[i], rooms[next_room])
+        add(doors, d)
+
+        room.add_door(d.exit1.rm, d)
+        room.add_door(d.exit2.rm, d)
+    end
+
+    return doors
+end
+
+function generate_level()
+    local num_rooms = 6
+    local min_dim = 6
+    local max_dim = 12
+    rooms = mk_rooms(num_rooms, min_dim, max_dim)
+
+    -- Generate some obstacles
+    local num_obstacles = 2
+    for rm in all(rooms) do
+        local sprite = 128
+        add_obstacles(rm, num_obstacles, sprite)
+    end
+
+    -- Connect rooms with doors
+    connect_rooms(rooms)
+end
+
+function next_room()
     scene = {}
 
     cam = game_cam.mk("main-cam", 0, 0, 128, 128, 16, 16)
     add(scene, cam)
 
-    -- Define the player
-    if p1 == nil then
-        p1 = player.mk(0, 0, 0)
-    end
+    -- Load the room
+    active_room = next_room_to_load
+    add(scene, active_room)
+    add(scene, active_room.obstacles)
+    are_doors_active = false
 
-    -- Generate the room
-    local cols = 5 + flr(rnd(8))
-    local rows = 5 + flr(rnd(8))
-    local spritesheet_index = 64
-    local x_offset = 64 - (cols * 8) / 2
-    local y_offset = 64 - (rows * 8) / 2
-
-    -- Generate some obstacles
-    local num_obstacles = 5
-    obstacles = {}
-    for i=1,num_obstacles do
-
-        -- Generate coords inside the room
-        local x = x_offset + (1 + flr(rnd(cols - 2))) * 8
-        local y = y_offset + (1 + flr(rnd(rows - 2))) * 8
-
-        local o = obstacle.mk(x, y, 8, 8, 128)
-        add(obstacles, o)
-        add(scene, o)
-    end
-
-    level_room = room.mk(x_offset, y_offset, cols, rows, spritesheet_index, p1, 1)
-    level_room.obstacles = obstacles
-
-    -- Generate the doors
-    local num_doors = 2
-    room.generate_doors(level_room, num_doors)
-    add(scene, level_room)
-
-    -- Position player on a door
-    p1_start_cell = level_room.doors[1]
-    local p1_pos = room.world_pos(level_room, p1_start_cell)
+    -- Position player on the correct door
+    p1_start_cell = next_room_to_load_p1_start
+    local p1_pos = room.world_pos(active_room, p1_start_cell)
     p1.x = p1_pos.x
     p1.y = p1_pos.y
     add(scene, p1)
-    are_doors_active = false
 
     -- Add the villain
-    local v1_start_cell = utils.rnd_outer_grid(rows, cols)
-    local v1_start = room.world_pos(level_room, v1_start_cell)
+    local v1_die_roll = flr(rnd(3))
+    local v1_start_cell = nil
+    if v1_die_roll == 0 and #active_room.doors >= 1 then
+        v1_start_cell = active_room.doors[1].get_coords(active_room.doors[1], active_room)
+    elseif v1_die_roll == 1 and #active_room.doors >= 2 then
+        v1_start_cell = active_room.doors[2].get_coords(active_room.doors[2], active_room)
+    else
+        v1_start_cell = utils.rnd_outer_grid(active_room.rows, active_room.cols)
+    end
+    local v1_start = room.world_pos(active_room, v1_start_cell)
     v1 = villain.mk(v1_start.x, v1_start.y, 32, p1, v1_speed)
-    add(scene, v1)
+    -- Note: This has been moved into update to allow for a spawn delay: add(scene, v1)
 
-    v1.set_path(v1, room.find_path(level_room, v1.get_centre(v1), p1.get_centre(p1)))
+    v1.set_path(v1, room.find_path(active_room, v1.get_centre(v1), p1.get_centre(p1)))
 
     if level_timer == nil then
         level_timer = secs_per_level * stat(8)
     end
 
-    state = "ingame"
+    room_timer = 0
 
-    -- log.syslog("Starting!")
-    -- local testpath = room.find_path(level_room, v2.mk(56, 64), v2.mk(96, 64))
-    -- for p in all(testpath) do
-    --     log.syslog(v2.str(p))
-    -- end
-    -- log.syslog("Done!")
+    state = "ingame"
 end
 
-function restart_level()
-    active_level_index -= 1
-    next_level()
+function restart_room()
+    next_room()
 end
 
 function reset_game()
-    active_level_index = 0
-    levels_completed = 0
-    p1 = nil
+    if p1 == nil then
+        p1 = player.mk(0, 0, 0)
+    end
+
     v1 = nil
     level_timer = nil
     sky_color_index = 0
     sky_frame_count = 0
 
-    next_level()
+    generate_level()
+
+    next_room_to_load = rooms[1]
+    next_room_to_load_p1_start = rooms[1].doors[1].get_coords(rooms[1].doors[1], rooms[1])
+    next_room()
 end
 
 function _init()
@@ -1159,22 +1277,12 @@ function _init()
     reset_game()
 end
 
-function bool_str(b)
-    if b then
-        return "true"
-    else
-        return "false"
-    end
-end
-
 function is_p1_caught()
     return p1_caught_time > 0
 end
 
 function _update()
-    if state == "test" then
-        test = 0
-    elseif state == "ingame" then
+    if state == "ingame" then
         p1.vel = v2.zero()
 
         local p1_speed = 0
@@ -1202,7 +1310,7 @@ function _update()
         end
 
         if btnp(5) then
-            restart_level()
+            restart_room()
         end
 
         if is_p1_caught() then
@@ -1219,6 +1327,12 @@ function _update()
         end
 
         level_timer -= 1
+        room_timer += 1
+
+        if room_timer == v1_spawn_delay * stat(8) then
+            add(scene, v1)
+            v1_enabled = true
+        end
 
         if level_timer == 0 then
             state = "gameover"
@@ -1231,25 +1345,31 @@ function _update()
         end
 
         -- Adjust actors to be in room
-        restrict_to_room(level_room, p1, 8, 8)
-        restrict_to_room(level_room, v1, 8, 8)
+        restrict_to_room(active_room, p1, 8, 8)
+
+        if v1_enabled then
+            restrict_to_room(active_room, v1, 8, 8)
+        end
 
         -- Collide with obstacles
-        for o in all(obstacles) do
+        for o in all(active_room.obstacles) do
             collide_with_obstacle(p1, o, 8, 8)
-            collide_with_obstacle(v1, o, 8, 8)
+
+            if v1_enabled then
+                collide_with_obstacle(v1, o, 8, 8)
+            end
         end
 
         -- Check if the player has moved off the starting square
         local p1_rect = p1.get_rect(p1)
-        local start_cell_rect = room.cell_rect(level_room, p1_start_cell)
+        local start_cell_rect = room.cell_rect(active_room, p1_start_cell)
         if false == are_doors_active and false == utils.rect_col(p1_rect[1], p1_rect[2], start_cell_rect[1], start_cell_rect[2]) then
             are_doors_active = true
         end
 
         p1_rect = p1.get_rect(p1)
         v1_rect = v1.get_rect(v1)
-        if not v1.is_stunned(v1) and utils.rect_col(p1_rect[1], p1_rect[2], v1_rect[1], v1_rect[2]) then
+        if v1_enabled and not v1.is_stunned(v1) and utils.rect_col(p1_rect[1], p1_rect[2], v1_rect[1], v1_rect[2]) then
             p1.set_stamina(p1, p1.stamina - 1)
 
             p1_caught_time += 1
@@ -1262,9 +1382,10 @@ function _update()
             p1.set_stamina(p1, p1.stamina + 0.5)
         end
 
+        -- Update villain pathing
         -- @TODO This is out of place, but easiest for now
-        if level_timer % flr(stat(8) / 4) == 0 then
-            v1.set_path(v1, room.find_path(level_room, v1.get_centre(v1), p1.get_centre(p1)))
+        if v1_enabled and level_timer % flr(stat(8) / 4) == 0 then
+            v1.set_path(v1, room.find_path(active_room, v1.get_centre(v1), p1.get_centre(p1)))
         end
 
         sky_frame_count += 1
@@ -1275,13 +1396,20 @@ function _update()
 
         if p1.stamina <= 0 then
             state = "gameover"
-        elseif are_doors_active and not is_p1_caught() and level_room.is_at_door(level_room, p1) then   -- Check if the player is at a door
-            state = "complete"
-            screen_wipe = cocreate(ui.horiz_wipe)
+        elseif are_doors_active and not is_p1_caught() then   -- Check if the player is at a door
+            local d = active_room.is_at_door(active_room, p1)
+            if d != nil then
+                local exit = d.other_exit(d, active_room)
+                next_room_to_load = exit.rm
+                next_room_to_load_p1_start = exit.coords
+
+                state = "complete"
+                screen_wipe = cocreate(ui.horiz_wipe)
+            end
         end
     elseif state == "complete" then
         if costatus(screen_wipe) == 'dead' then
-            next_level()
+            next_room()
             screen_wipe = nil
         end
     elseif state == "gameover" then
@@ -1318,11 +1446,11 @@ function collide_with_obstacle(actor, obst, actor_size_x, actor_size_y)
     local actor_rect = actor.get_rect(actor)
 
     if utils.rect_col(actor_rect[1], actor_rect[2], obst_rect[1], obst_rect[2]) then
-        local actor_last_rect = actor.get_last_rect(actor)
-        local is_lhs = actor_last_rect[2].x < obst_rect[1].x
-        local is_rhs = actor_last_rect[1].x > obst_rect[2].x
-        local is_top = actor_last_rect[2].y < obst_rect[1].y
-        local is_bottom = actor_last_rect[1].y > obst_rect[2].y
+        local last_rect = actor.get_last_rect(actor)
+        local is_lhs = last_rect[2].x < obst_rect[1].x
+        local is_rhs = last_rect[1].x > obst_rect[2].x
+        local is_top = last_rect[2].y < obst_rect[1].y
+        local is_bottom = last_rect[1].y > obst_rect[2].y
 
         if is_lhs and not is_rhs and not is_top and not is_bottom then
             actor.x = obst_rect[1].x - actor_size_x
@@ -1355,7 +1483,6 @@ function _draw()
     elseif state == "gameover" then
         color(7)
         log.log("game over!")
-        log.log("levels completed: "..levels_completed)
         log.log("press 4 to try again")
     end
     log.render()

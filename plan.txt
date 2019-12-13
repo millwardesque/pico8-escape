@@ -6,24 +6,24 @@ Core functionality:
 
 Player/Villain interaction:
     Villain can only hide behind certain obstacles
-        * Needs ray-rect collision
     Player can push obstacles in front of villain
     Multiple villain types / behaviours than get randomized per game session
+    Villain can disappear when not directly visible
+        * Needs ray-rect collision
 
 Rooms:
-    Windows (doors w/ different sprite)
-    Adjoining rooms / hallways
-    Retain room layout
-    Remember rooms attached to doors
     Pre-fab room obstacle sets
     Key to open door
-    Player can't go back through start door (or, at least villain pursues)
     Rooms can have interconnected items (e.g. generator in one room powers light switches in other rooms)
+    Windows (doors w/ different sprite)
+    Player can't go back through start door (or, at least villain pursues)
     Previous player deaths can be used to startle player
 
 Visual:
     Animation
     Killing blow at zero stamina
+    Different colours based on room
 
 Bugs:
     Use A* tester to figure out why villain sometimes walks away from player
+    Improve A* search speed

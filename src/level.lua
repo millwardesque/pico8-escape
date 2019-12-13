@@ -1,10 +1,14 @@
 local level = {
     mk = function()
-        local l = {
+        return {
+            p1 = nil,
+            v1 = nil,
+            level_timer = 0,
+            room_timer = 0,
+            rooms = {},
+            flags = {},
+            -- Eventually: corpses, flags, items, etc.
         }
-
-        return l
     end,
 }
-
 return level

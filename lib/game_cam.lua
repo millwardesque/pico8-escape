@@ -13,7 +13,7 @@ local game_cam = {
 
         c.update = function(cam)
             -- Track a target
-            target = cam.cam.target
+            local target = cam.cam.target
             if target ~= nil then
                 if target.x < cam.x + cam.cam.bounds_x then
                     cam.x = target.x - cam.cam.bounds_x
